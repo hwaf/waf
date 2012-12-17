@@ -1096,7 +1096,7 @@ class InstallContext(BuildContext):
 		self.run_task_now(tsk, postpone)
 		return tsk
 
-	def symlink_as(self, dest, src, env=None, cwd=None, add=True, relative_trick=False, postpone=True):
+	def symlink_as(self, dest, src, env=None, cwd=None, add=True, postpone=True, relative_trick=False):
 		"""
 		Create a task to install a symlink::
 
@@ -1115,6 +1115,8 @@ class InstallContext(BuildContext):
 		:type relative_trick: bool
 		:param postpone: execute the task immediately to perform the installation
 		:type postpone: bool
+		:param relative_trick: make the symlink relative (default: ``False``)
+		:type relative_trick: bool
 		"""
 
 		if Utils.is_win32:
