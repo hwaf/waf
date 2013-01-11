@@ -12,246 +12,246 @@ getting broken every few months.
 If you have been lured into trying to use Go, you should stick to their Makefiles.
 """
 
-import os, platform
+################################################################################
+# Possible scenarios (@ - many, % - one):
+#
+# 1. go object files:
+#    @.go -> %.6
+#
+#    One object file per Go package.
+#
+# 2. go packages
+#    %.6 -> %.a
+#
+#    Technically a Go package is an object file, but if it's a cgo case or there
+#    are C/asm extensions, .a file may contain more than one object file.
+#
+# 3. go programs
+#    %.6 -> % (or %.exe on windows)
+#
+#    Package should be called 'main' and there should be 'main.main' function.
+#
+# 4. cgo packages
+#     cgo | @.go -> _cgo_defun.c, _cgo_export.c, _cgo_export.h, _cgo_gotypes.go, _cgo_main.c, @.cgo1.go, @.cgo2.c
+#      6c | _cgo_defun.c -> _cgo_defun.6
+#     gcc | _cgo_main.c, _cgo_export.c, @.cgo2.c -> _cgo_main.o, _cgo_export.o, @.cgo2.o
+#     gcc | _cgo_main.o, _cgo_export.o, @.cgo2.o -> _cgo_.o
+#     cgo | _cgo_.o -> _cgo_import.c
+#      6c | _cgo_import.c -> _cgo_import.6
+#      6g | _cgo_gotypes.go, @.cgo1.go -> _go_.6
+#    pack | _go_.6, _cgo_import.6, _cgo_defun.6, _cgo_export.o, @.cgo2.o -> %.a
+#
+#    It's a bit complicated, yeah. But we have to handle that.
+#
+################################################################################
+# Misc notes:
+#
+# 1. Go linker links libraries automatically, it's not like C where you have to
+#    add a bunch of -lmylibX.
+################################################################################
+# TODO:
+# 1. Add support for this (from ccroot's create_compiled_task):
+#    out = '%s.%d.o' % (node.name, self.idx)
+################################################################################
 
-from waflib import Utils, Task, TaskGen
-from waflib.TaskGen import feature, extension, after_method, before_method
-from waflib.Tools.ccroot import link_task, stlink_task, propagate_uselib_vars, process_use
+import os, platform, sys, tempfile
+from waflib import Utils
+from waflib.Configure import conf
+from waflib.Utils import subprocess
+from waflib.Task import Task
+from waflib.TaskGen import feature, before_method, after_method, taskgen_method
+from waflib.Tools.ccroot import stlink_task, link_task, apply_incpaths, apply_link
+from waflib.Errors import WafError
 
-class go(Task.Task):
-	run_str = '${GOC} ${GOCFLAGS} ${CPPPATH_ST:INCPATHS} -o ${TGT} ${SRC}'
+from waflib.extras import go_scan
+
+########################################################################
+# Tasks and task generators
+########################################################################
+
+class go(Task):
+	run_str = '${GO_6G} ${GCFLAGS} ${GCPATH_ST:INCPATHS} -o ${TGT} ${SRC}'
+	scan = go_scan.scan
 
 class gopackage(stlink_task):
-	run_str = '${GOP} grc ${TGT} ${SRC}'
+	run_str = '${GO_PACK} grc ${TGT} ${SRC}'
 
 class goprogram(link_task):
-	run_str = '${GOL} ${GOLFLAGS} -o ${TGT} ${SRC}'
-	inst_to = '${BINDIR}'
+	run_str = '${GO_6L} ${GLFLAGS} ${GLPATH_ST:INCPATHS} -o ${TGT} ${SRC}'
+	inst_to = '${GOBINDIR}'
 	chmod   = Utils.O755
 
-class cgopackage(stlink_task):
-	color   = 'YELLOW'
-	inst_to = '${LIBDIR}'
-	ext_in  = ['.go']
-	ext_out = ['.a']
-
-	def run(self):
-		src_dir = self.generator.bld.path
-		source  = self.inputs
-		target  = self.outputs[0].change_ext('')
-
-		#print ("--> %s" % self.outputs)
-		#print ('++> %s' % self.outputs[1])
-		bld_dir = self.outputs[1]
-		bld_dir.mkdir()
-		obj_dir = bld_dir.make_node('_obj')
-		obj_dir.mkdir()
-
-		bld_srcs = []
-		for s in source:
-			# FIXME: it seems gomake/cgo stumbles on filenames like a/b/c.go
-			# -> for the time being replace '/' with '_'...
-			#b = bld_dir.make_node(s.path_from(src_dir))
-			b = bld_dir.make_node(s.path_from(src_dir).replace(os.sep,'_'))
-			b.parent.mkdir()
-			#print ('++> %s' % (s.path_from(src_dir),))
-			try:
-				try:os.remove(b.abspath())
-				except Exception:pass
-				os.symlink(s.abspath(), b.abspath())
-			except Exception:
-				# if no support for symlinks, copy the file from src
-				b.write(s.read())
-			bld_srcs.append(b)
-			#print("--|> [%s]" % b.abspath())
-			b.sig = Utils.h_file(b.abspath())
-			pass
-		#self.set_inputs(bld_srcs)
-		#self.generator.bld.raw_deps[self.uid()] = [self.signature()] + bld_srcs
-		makefile_node = bld_dir.make_node("Makefile")
-		makefile_tmpl = '''\
-# Copyright 2009 The Go Authors.  All rights reserved.
-# Use of this source code is governed by a BSD-style
-# license that can be found in the LICENSE file. ---
-
-include $(GOROOT)/src/Make.inc
-
-TARG=%(target)s
-
-GCIMPORTS= %(gcimports)s
-
-CGOFILES=\\
-\t%(source)s
-
-CGO_CFLAGS= %(cgo_cflags)s
-
-CGO_LDFLAGS= %(cgo_ldflags)s
-
-include $(GOROOT)/src/Make.pkg
-
-%%: install %%.go
-	$(GC) $*.go
-	$(LD) -o $@ $*.$O
-
-''' % {
-'gcimports': ' '.join(l for l in self.env['GOCFLAGS']),
-'cgo_cflags' : ' '.join(l for l in self.env['GOCFLAGS']),
-'cgo_ldflags': ' '.join(l for l in self.env['GOLFLAGS']),
-'target': target.path_from(obj_dir),
-'source': ' '.join([b.path_from(bld_dir) for b in bld_srcs])
-}
-		makefile_node.write(makefile_tmpl)
-		#print ("::makefile: %s"%makefile_node.abspath())
-		cmd = Utils.subst_vars('gomake ${GOMAKE_FLAGS}', self.env).strip()
-		o = self.outputs[0].change_ext('.gomake.log')
-		fout_node = bld_dir.find_or_declare(o.name)
-		fout = open(fout_node.abspath(), 'w')
-		rc = self.generator.bld.exec_command(
-		 cmd,
-		 stdout=fout,
-		 stderr=fout,
-		 cwd=bld_dir.abspath(),
-		)
-		if rc != 0:
-			import waflib.Logs as msg
-			msg.error('** error running [%s] (cgo-%s)' % (cmd, target))
-			msg.error(fout_node.read())
-			return rc
-		self.generator.bld.read_stlib(
-		 target,
-		 paths=[obj_dir.abspath(),],
-		)
-		tgt = self.outputs[0]
-		if tgt.parent != obj_dir:
-			install_dir = os.path.join('${LIBDIR}',
-				tgt.parent.path_from(obj_dir))
+@taskgen_method
+def extract_nodes_with_ext(self, fromattr, ext):
+	src_nodes = []
+	no_nodes = []
+	for n in self.to_nodes(getattr(self, fromattr)):
+		if n.name.endswith(ext):
+			src_nodes.append(n)
 		else:
-			install_dir = '${LIBDIR}'
-		#print('===> %s (%s)' % (tgt.abspath(), install_dir))
-		self.generator.bld.install_files(
-		 install_dir,
-		 tgt.abspath(),
-		 relative_trick=False,
-		 postpone=False,
-		)
-		return rc
+			no_nodes.append(n)
+	setattr(self, fromattr, no_nodes)
+	return src_nodes
 
-@extension('.go')
-def compile_go(self, node):
-	#print('*'*80, self.name)
-	if not ('cgopackage' in self.features):
-		return self.create_compiled_task('go', node)
-	#print ('compile_go-cgo...')
-	bld_dir = node.parent.get_bld()
-	obj_dir = bld_dir.make_node('_obj')
-	target  = obj_dir.make_node(node.change_ext('.a').name)
-	return self.create_task('cgopackage', node, node.change_ext('.a'))
-
-@feature('gopackage', 'goprogram', 'cgopackage')
-@before_method('process_source')
-def go_compiler_is_foobar(self):
-	if self.env.GONAME == 'gcc':
+@feature('gopackage')
+@before_method('apply_link')
+def modify_install_path(self):
+	if hasattr(self, 'install_path'):
 		return
-	self.source = self.to_nodes(self.source)
-	src = []
-	go = []
-	for node in self.source:
-		if node.name.endswith('.go'):
-			go.append(node)
-		else:
-			src.append(node)
-	self.source = src
-	if not ('cgopackage' in self.features):
-		#print('--> [%s]... (%s)' % (go[0], getattr(self, 'target', 'N/A')))
-		tsk = self.create_compiled_task('go', go[0])
-		tsk.inputs.extend(go[1:])
-	else:
-		#print ('+++ [%s] +++' % self.target)
-		bld_dir = self.path.get_bld().make_node('cgopackage--%s' % self.target.replace(os.sep,'_'))
-		obj_dir = bld_dir.make_node('_obj')
-		target  = obj_dir.make_node(self.target+'.a')
-		tsk = self.create_task('cgopackage', go, [target, bld_dir])
-		self.link_task = tsk
 
-@feature('gopackage', 'goprogram', 'cgopackage')
-@after_method('process_source', 'apply_incpaths',)
-def go_local_libs(self):
-	names = self.to_list(getattr(self, 'use', []))
-	#print ('== go-local-libs == [%s] == use: %s' % (self.name, names))
-	for name in names:
-		tg = self.bld.get_tgen_by_name(name)
-		if not tg:
-			raise Utils.WafError('no target of name %r necessary for %r in go uselib local' % (name, self))
-		tg.post()
-		#print ("-- tg[%s]: %s" % (self.name,name))
-		lnk_task = getattr(tg, 'link_task', None)
-		if lnk_task:
-			for tsk in self.tasks:
-				if isinstance(tsk, (go, gopackage, cgopackage)):
-					tsk.set_run_after(lnk_task)
-					tsk.dep_nodes.extend(lnk_task.outputs)
-			path = lnk_task.outputs[0].parent.abspath()
-			if isinstance(lnk_task, (go, gopackage)):
-				# handle hierarchical packages
-				path = lnk_task.generator.path.get_bld().abspath()
-			elif isinstance(lnk_task, (cgopackage,)):
-				# handle hierarchical cgopackages
-				cgo_obj_dir = lnk_task.outputs[1].find_or_declare('_obj')
-				path = cgo_obj_dir.abspath()
-			# recursively add parent GOCFLAGS...
-			self.env.append_unique('GOCFLAGS',
-			 getattr(lnk_task.env, 'GOCFLAGS',[]))
-			# ditto for GOLFLAGS...
-			self.env.append_unique('GOLFLAGS',
-			 getattr(lnk_task.env, 'GOLFLAGS',[]))
-			self.env.append_unique('GOCFLAGS', ['-I%s' % path])
-			self.env.append_unique('GOLFLAGS', ['-L%s' % path])
-		for n in getattr(tg, 'includes_nodes', []):
-			self.env.append_unique('GOCFLAGS', ['-I%s' % n.abspath()])
+	# in go we're using target names as both target dir and the library name
+	# for installation, we need to modify default install path here for that
+	self.install_path = os.path.join(self.env.GOLIBDIR, os.path.split(self.target)[0])
+
+@feature('goprogram')
+@before_method('apply_link')
+def apply_cgo_link(self):
+	# special case, when user wants a 'goprogram' with 'cgo', we need an
+	# intermediate 'gopackage' to be inserted, because go linker links only
+	# one file at a time
+	if 'cgo' not in self.features:
+		return
+
+	objs = [t.outputs[0] for t in getattr(self, 'compiled_tasks', [])]
+	lt = self.create_task('gopackage', objs)
+	lt.add_target(self.target)
+	self.compiled_tasks = [lt]
+
+@feature('go')
+@before_method('process_source')
+def apply_go(self):
+	# extract .go nodes from 'source'
+	src_nodes = self.extract_nodes_with_ext('source', '.go')
+
+	# if there were no source nodes, return
+	if not src_nodes:
+		return
+
+	# object file
+	obj_node = self.path.find_or_declare(self.target + '.%s' % self.env.GOCHAR)
+	task = self.create_task('go', src_nodes, obj_node)
+	try:
+		self.compiled_tasks.append(task)
+	except AttributeError:
+		self.compiled_tasks = [task]
+
+def decorate(*args):
+	decorators = args[:-1]
+	func = args[-1]
+	for d in reversed(decorators):
+		func = d(func)
+
+decorate(
+	feature('go'),
+	after_method('propagate_uselib_vars', 'process_source'),
+	apply_incpaths,
+)
+decorate(
+	feature('goprogram', 'gopackage'),
+	after_method('process_source'),
+	apply_link,
+)
+
+########################################################################
+# Configuration
+########################################################################
+
+@conf
+def find_go_command(self):
+	# find go command, we will use it to run go tools
+	self.find_program('go', var='GO')
+
+@conf
+def get_go_env(self):
+	def set_def(var, val):
+		if not self.env[var]:
+			self.env[var] = val
+
+	vars = {}
+	try:
+		out = self.cmd_and_log([self.env.GO, 'env'])
+		for line in out.splitlines():
+			eq = line.index('=')
+			vars[line[:eq]] = line[eq+2:-1]
+	except (WafError, ValueError):
 		pass
-	pass
+
+	vars_to_grab = 'GOROOT GOARCH GOOS GOHOSTARCH GOHOSTOS GOTOOLDIR GOCHAR'.split()
+	for v in vars_to_grab:
+		self.start_msg('Checking for %s' % v)
+		if v in vars:
+			set_def(v, vars[v])
+
+		if self.env[v]:
+			self.end_msg(self.env[v])
+		else:
+			self.end_msg('no', color='YELLOW')
+			self.fatal('"%s" variable is missing, it is mandatory' % v)
+
+	self.start_msg('Checking for GOBIN')
+	set_def('GOBIN', os.getenv('GOBIN'))
+	if self.env['GOBIN']:
+		self.end_msg(self.env['GOBIN'])
+	else:
+		self.end_msg('no', color='YELLOW')
+
+	self.start_msg('Checking for GOPATH')
+	gopath = os.getenv('GOPATH')
+	if gopath:
+		gopath = gopath.split(os.path.pathsep)[0]
+		set_def('GOPATH', gopath)
+		self.end_msg(self.env.GOPATH)
+	else:
+		self.end_msg('no', color='YELLOW')
+
+
+	if self.env.GOPATH:
+		self.env.GOBINDIR = os.path.join(self.env.GOPATH, 'bin')
+		self.env.GOLIBDIR = os.path.join(
+			self.env.GOPATH, 'pkg', '%s_%s' % (self.env.GOOS, self.env.GOARCH))
+	else:
+		if self.env.GOBIN:
+			self.env.GOBINDIR = self.env.GOBIN
+		else:
+			self.env.GOBINDIR = os.path.join(self.env.GOROOT, 'bin')
+		self.env.GOLIBDIR = os.path.join(
+			self.env.GOROOT, 'pkg', '%s_%s' % (self.env.GOOS, self.env.GOARCH))
+
+	# pattern for gopackage task output
+	set_def('gopackage_PATTERN', '%s.a')
+
+	# misc flags/patterns
+	set_def('GCPATH_ST', '-I%s')
+	set_def('GLPATH_ST', '-L%s')
+
+
+@conf
+def find_go_tools(self):
+	def find_program(prog, var):
+		self.find_program(prog, var=var, path_list=[self.env.GOTOOLDIR])
+
+	c = self.env.GOCHAR
+	find_program(c + 'c', 'GO_6C')
+	find_program(c + 'g', 'GO_6G')
+	find_program(c + 'l', 'GO_6L')
+	find_program('pack',  'GO_PACK')
+	find_program('cgo',   'GO_CGO')
+	find_program('dist',  'GO_DIST')
+
+@conf
+def get_go_version(self):
+	try:
+		self.start_msg('Checking for go version')
+		if not self.env.GOVERSION:
+			version = self.cmd_and_log([self.env.GO_DIST, 'version']).strip()
+			self.env.GOVERSION = version
+		self.end_msg(self.env.GOVERSION)
+	except WafError:
+		self.end_msg('no', color="YELLOW")
 
 def configure(conf):
-
-	def set_def(var, val):
-		if not conf.env[var]:
-			conf.env[var] = val
-
-	goarch = os.getenv('GOARCH')
-	if goarch == '386':
-		set_def('GO_PLATFORM', 'i386')
-	elif goarch == 'amd64':
-		set_def('GO_PLATFORM', 'x86_64')
-	elif goarch == 'arm':
-		set_def('GO_PLATFORM', 'arm')
-	else:
-		set_def('GO_PLATFORM', platform.machine())
-
-	if conf.env.GO_PLATFORM == 'x86_64':
-		set_def('GO_COMPILER', '6g')
-		set_def('GO_LINKER', '6l')
-	elif conf.env.GO_PLATFORM in ['i386', 'i486', 'i586', 'i686']:
-		set_def('GO_COMPILER', '8g')
-		set_def('GO_LINKER', '8l')
-	elif conf.env.GO_PLATFORM == 'arm':
-		set_def('GO_COMPILER', '5g')
-		set_def('GO_LINKER', '5l')
-		set_def('GO_EXTENSION', '.5')
-
-	if not (conf.env.GO_COMPILER or conf.env.GO_LINKER):
-		raise conf.fatal('Unsupported platform ' + platform.machine())
-
-	set_def('GO_PACK', 'gopack')
-	set_def('gopackage_PATTERN', '%s.a')
-	set_def('CPPPATH_ST', '-I%s')
-
-	set_def('GOMAKE_FLAGS', ['--quiet'])
-	conf.find_program(conf.env.GO_COMPILER, var='GOC')
-	conf.find_program(conf.env.GO_LINKER,   var='GOL')
-	conf.find_program(conf.env.GO_PACK,     var='GOP')
-
-	conf.find_program('cgo',                var='CGO')
-
-TaskGen.feature('go')(process_use)
-TaskGen.feature('go')(propagate_uselib_vars)
+	conf.find_go_command()
+	conf.get_go_env()
+	conf.find_go_tools()
+	conf.get_go_version()
 

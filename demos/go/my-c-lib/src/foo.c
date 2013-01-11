@@ -5,11 +5,11 @@
 
 void my_c_hello(const char *msg)
 {
-  fprintf(stdout, msg);
+  fprintf(stdout, "%s\n", msg);
 }
 
 void my_c_bye(const char *msg)
 {
-  fprintf(stdout, msg);
+  fprintf(stdout, "%s\n", msg);
 }
 

@@ -15,28 +15,27 @@ def options(opt):
 
 def configure(ctx):
 	ctx.load('go')
+	ctx.load('gcc')
+	ctx.load('cgo')
 
-	# the compiler keeps changing, think twice before trying it for a serious project
-	ctx.env.TRY_CGO = False
+	ctx.env.TRY_CGO=True
+	#ctx.env.TRY_CGO=False
 
-	return
 	try:
 		ctx.load('gcc')
 		ctx.check_cc(fragment='#include <gmp.h>\nint main() {return 0;}\n', uselib_store='GMP', lib='gmp')
 	except ctx.errors.ConfigurationError:
-		ctx.env.TRY_CGO = False
+		ctx.env.TRY_CGO_GMP = False
 	else:
-		ctx.env.TRY_CGO = True
+		ctx.env.TRY_CGO_GMP = True
+	return
 
 def build(ctx):
 
 	ctx(
 		features = 'go gopackage',
 		target   = 'other',
-		source   = [
-			'other/a.go',
-			'other/b.go', # gopack sux
-		],
+		source   = 'other/a.go other/b.go',
 	)
 
 	ctx(
@@ -49,8 +48,26 @@ def build(ctx):
 
 	# NOTE: if you use ant_glob, use it like this:     bld.path.ant_glob('*.go', excl='*_test.go')
 
-	if ctx.env.TRY_CGO:
+	if ctx.env.TRY_CGO_GMP:
 		ctx.read_shlib('gmp')
+		ctx(
+			features = 'cgo go gopackage',
+			name     = 'go-gmp',
+			target   = 'gmp',
+			cgo_source   = 'gmp.go gmp/impl.go',
+			use      = 'gmp',
+			)
+		#ctx.add_group()
+		ctx(features='go goprogram uselib',
+			source='pi.go',
+			target='pi',
+			use='go-gmp',
+			#gocflags=['-I.', '-I..'],
+			)
+
+
+	if ctx.env.TRY_CGO:
+		# testing multiple cgopackage targets...
 		ctx(
 			features = 'c cshlib',
 			source   = 'my-c-lib/src/foo.c',
@@ -59,35 +76,19 @@ def build(ctx):
 			export_includes=['my-c-lib/includes'],
 			)
 		ctx(
-			features = 'cgopackage',
-			name     = 'go-gmp',
-			target   = 'gmp',
-			source   = 'gmp.go gmp/impl.go',
-			use      = 'gmp',
-			)
-
-		# testing multiple cgopackage targets...
-		ctx(
-			features = 'cgopackage',
+			features = 'cgo go gopackage',
 			name     = 'go-stdio',
 			target   = 'cgo/stdio',
-			source   = 'stdio/file.go',
+			#source   = 'stdio/file.go',
+			cgo_source   = 'stdio/file.go',
 			)
 
 		ctx(
-			features = 'cgopackage',
+			features = 'cgo go gopackage',
 			name     = 'go-my-c-lib',
 			target   = 'foo',
-			source   = 'my-c-lib.go my-c-lib-2.go',
+			cgo_source   = 'my-c-lib.go my-c-lib-2.go',
 			use      = ['my-c-lib',],
-			)
-
-		#ctx.add_group()
-		ctx(features='go goprogram uselib',
-			source='pi.go',
-			target='pi',
-			use='go-gmp',
-			#gocflags=['-I.', '-I..'],
 			)
 
 		ctx(
