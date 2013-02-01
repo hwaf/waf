@@ -395,13 +395,17 @@ def apply_tex(self):
 			except KeyError:
 				tree.node_deps[task.uid()] = deps_lst
 
+		v = dict(os.environ)
+		p = node.parent.abspath() + os.pathsep + self.path.abspath() + os.pathsep + self.path.get_bld().abspath() + os.pathsep + v.get('TEXINPUTS') + os.pathsep
+		v['TEXINPUTS'] = p
+
 		if self.type == 'latex':
 			if 'ps' in outs:
 				tsk = self.create_task('dvips', task.outputs, node.change_ext('.ps'))
-				tsk.env.env = {'TEXINPUTS' : node.parent.abspath() + os.pathsep + self.path.abspath() + os.pathsep + self.path.get_bld().abspath()}
+				tsk.env.env = dict(v)
 			if 'pdf' in outs:
 				tsk = self.create_task('dvipdf', task.outputs, node.change_ext('.pdf'))
-				tsk.env.env = {'TEXINPUTS' : node.parent.abspath() + os.pathsep + self.path.abspath() + os.pathsep + self.path.get_bld().abspath()}
+				tsk.env.env = dict(v)
 		elif self.type == 'pdflatex':
 			if 'ps' in outs:
 				self.create_task('pdf2ps', task.outputs, node.change_ext('.ps'))
