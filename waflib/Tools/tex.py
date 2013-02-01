@@ -396,7 +396,7 @@ def apply_tex(self):
 				tree.node_deps[task.uid()] = deps_lst
 
 		v = dict(os.environ)
-		p = node.parent.abspath() + os.pathsep + self.path.abspath() + os.pathsep + self.path.get_bld().abspath() + os.pathsep + v.get('TEXINPUTS') + os.pathsep
+		p = node.parent.abspath() + os.pathsep + self.path.abspath() + os.pathsep + self.path.get_bld().abspath() + os.pathsep + v.get('TEXINPUTS', '') + os.pathsep
 		v['TEXINPUTS'] = p
 
 		if self.type == 'latex':
