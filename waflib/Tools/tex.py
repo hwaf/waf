@@ -163,7 +163,11 @@ class tex(Task.Task):
 						for k in exts_deps_tex:
 							Logs.debug('tex: trying %s%s' % (path, k))
 							found = node.parent.find_resource(path + k)
-							if found and not found in self.outputs:
+
+							for tsk in self.generator.tasks:
+								if not found or found in tsk.outputs:
+									break
+							else:
 								nodes.append(found)
 								add_name = False
 								for ext in exts_tex:
