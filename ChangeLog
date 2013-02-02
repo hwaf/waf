@@ -1,3 +1,8 @@
+NEW IN WAF 1.7.10
+-----------------
+* Enhancements in the LaTeX support #1248
+* Codelite plugin by Christian Klein
+
 NEW IN WAF 1.7.9
 ----------------
 * Improved the patch submitted in #1237 as it caused regressions
