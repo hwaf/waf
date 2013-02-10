@@ -7,7 +7,7 @@ Classes and methods shared by tools providing support for C-like language such
 as C/C++/D/Assembly/Go (this support module is almost never used alone).
 """
 
-import os
+import os, re
 from waflib import Task, Utils, Node, Errors
 from waflib.TaskGen import after_method, before_method, feature, taskgen_method, extension
 from waflib.Tools import c_aliases, c_preproc, c_config, c_osx, c_tests
@@ -328,6 +328,10 @@ def process_use(self):
 		if getattr(y, 'export_includes', None):
 			self.includes.extend(y.to_incnodes(y.export_includes))
 
+		if getattr(y, 'export_defines', None):
+			self.env.append_value('DEFINES', self.to_list(y.export_defines))
+
+
 	# and finally, add the uselib variables (no recursion needed)
 	for x in names:
 		try:
@@ -457,6 +461,7 @@ def apply_implib(self):
 
 # ============ the code above must not know anything about vnum processing on unix platforms =========
 
+re_vnum = re.compile('^([1-9]\\d*|0)[.]([1-9]\\d*|0)[.]([1-9]\\d*|0)$')
 @feature('cshlib', 'cxxshlib', 'dshlib', 'fcshlib', 'vnum')
 @after_method('apply_link', 'propagate_uselib_vars')
 def apply_vnum(self):
@@ -475,6 +480,8 @@ def apply_vnum(self):
 		return
 
 	link = self.link_task
+	if not re_vnum.match(self.vnum):
+		raise Errors.WafError('Invalid version %r for %r' % (self.vnum, self))
 	nums = self.vnum.split('.')
 	node = link.outputs[0]
 
