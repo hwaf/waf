@@ -269,7 +269,7 @@ def check_python_headers(conf):
 	#name = 'python' + env['PYTHON_VERSION']
 
 	# TODO simplify this
-	for name in ('python' + env['PYTHON_VERSION'], 'python' + env['PYTHON_VERSION'].replace('.', '')):
+	for name in ('python' + env['PYTHON_VERSION'], 'python' + env['PYTHON_VERSION'] + 'm', 'python' + env['PYTHON_VERSION'].replace('.', '')):
 
 		# LIBPATH_PYEMBED is already set; see if it works.
 		if not result and env['LIBPATH_PYEMBED']:
