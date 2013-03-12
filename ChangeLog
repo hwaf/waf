@@ -5,6 +5,8 @@ NEW IN WAF 1.7.10
 * Validate the versioned library number #1180
 * New export_defines keyword for C/C++/Fortran libraries
 * Python config tests enhancements #1231 #1261
+* Enable the distribution of non-python data files #1265
+* Improved the boost configuration output #1266
 
 NEW IN WAF 1.7.9
 ----------------
