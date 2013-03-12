@@ -150,9 +150,11 @@ def boost_get_includes(self, *k, **kw):
 		if self.__boost_get_version_file(dir):
 			return dir
 	if includes:
-		self.fatal('headers not found in %s' % includes)
+		self.end_msg('headers not found in %s' % includes)
+		self.fatal('The configuration failed')
 	else:
-		self.fatal('headers not found, please provide a --boost-includes argument (see help)')
+		self.end_msg('headers not found, please provide a --boost-includes argument (see help)')
+		self.fatal('The configuration failed')
 
 
 @conf
@@ -193,9 +195,11 @@ def __boost_get_libs_path(self, *k, **kw):
 				path = None
 	if not path:
 		if libs:
-			self.fatal('libs not found in %s' % libs)
+			self.end_msg('libs not found in %s' % libs)
+			self.fatal('The configuration failed')
 		else:
-			self.fatal('libs not found, please provide a --boost-libs argument (see help)')
+			self.end_msg('libs not found, please provide a --boost-libs argument (see help)')
+			self.fatal('The configuration failed')
 
 	self.to_log('Found the boost path in %r with the libraries:' % path)
 	for x in files:
@@ -248,7 +252,8 @@ def boost_get_libs(self, *k, **kw):
 				libs.append(format_lib_name(file.name))
 				break
 		else:
-			self.fatal('lib %s not found in %s' % (lib, path.abspath()))
+			self.end_msg('lib %s not found in %s' % (lib, path.abspath()))
+			self.fatal('The configuration failed')
 
 	return path.abspath(), libs
 
@@ -347,14 +352,17 @@ def check_boost(self, *k, **kw):
 					e = exc
 
 			if e is not None:
-				self.fatal("Could not auto-detect boost linking flags combination, you may report it to boost.py author", ex=e)
+				self.end_msg("Could not auto-detect boost linking flags combination, you may report it to boost.py author", ex=e)
+				self.fatal('The configuration failed')
 		else:
-			self.fatal("Boost linkage flags auto-detection not implemented (needed ?) for this toolchain")
+			self.end_msg("Boost linkage flags auto-detection not implemented (needed ?) for this toolchain")
+			self.fatal('The configuration failed')
 	else:
 		self.start_msg('Checking for boost linkage')
 		try:
 			try_link()
 		except Errors.ConfigurationError as e:
-			self.fatal("Could not link against boost libraries using supplied options")
+			self.end_msg("Could not link against boost libraries using supplied options")
+			self.fatal('The configuration failed')
 		self.end_msg('ok')
 
