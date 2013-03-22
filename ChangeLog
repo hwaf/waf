@@ -7,6 +7,8 @@ NEW IN WAF 1.7.10
 * Python config tests enhancements #1231 #1261
 * Enable the distribution of non-python data files #1265
 * Improved the boost configuration output #1266
+* Exclude intltoolcache from waf dist # 1267
+* Use Utils.readf/Utils.writef to prevent build cache loss on windows platforms
 
 NEW IN WAF 1.7.9
 ----------------
