@@ -1,7 +1,21 @@
+NEW IN WAF 1.7.10
+-----------------
+* Enhancements in the LaTeX support #1248
+* Codelite plugin by Christian Klein
+* Validate the versioned library number #1180
+* New export_defines keyword for C/C++/Fortran libraries
+* Python config tests enhancements #1231 #1261
+* Enable the distribution of non-python data files #1265
+* Improved the boost configuration output #1266
+* Exclude intltoolcache from waf dist # 1267
+* Use Utils.readf/Utils.writef to prevent build cache loss on windows platforms
+
 NEW IN WAF 1.7.9
 ----------------
-* Reverted the patch submitted in #1237 as it caused regressions
+* Improved the patch submitted in #1237 as it caused regressions
 * Reverted the patch submitted in #1212 as it caused regressions
+* Added a cache to waflib/extras/gccdeps.py #1244
+* Unit test ut_exec was not obtained properly #1245
 
 NEW IN WAF 1.7.8
 ----------------

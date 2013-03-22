@@ -853,7 +853,7 @@ class c_parser(object):
 				break
 			found = self.cached_find_resource(n, filename)
 
-		if found:
+		if found and not found in self.ban_includes:
 			# TODO the duplicates do not increase the no-op build times too much, but they may be worth removing
 			self.nodes.append(found)
 			if filename[-4:] != '.moc':
@@ -921,6 +921,7 @@ class c_parser(object):
 			bld.parse_cache = {}
 			self.parse_cache = bld.parse_cache
 
+		self.current_file = node
 		self.addlines(node)
 
 		# macros may be defined on the command-line, so they must be parsed as if they were part of the file
@@ -970,12 +971,11 @@ class c_parser(object):
 					else: state[-1] = accepted
 				elif token == 'include' or token == 'import':
 					(kind, inc) = extract_include(line, self.defs)
-					if inc in self.ban_includes:
-						continue
-					if token == 'import': self.ban_includes.add(inc)
 					if ve: debug('preproc: include found %s    (%s) ', inc, kind)
 					if kind == '"' or not strict_quotes:
-						self.tryfind(inc)
+						self.current_file = self.tryfind(inc)
+						if token == 'import':
+							self.ban_includes.add(self.current_file)
 				elif token == 'elif':
 					if state[-1] == accepted:
 						state[-1] = skipped
@@ -997,7 +997,7 @@ class c_parser(object):
 						#print "undef %s" % name
 				elif token == 'pragma':
 					if re_pragma_once.match(line.lower()):
-						self.ban_includes.add(self.curfile)
+						self.ban_includes.add(self.current_file)
 			except Exception as e:
 				if Logs.verbose:
 					debug('preproc: line parsing failed (%s): %s %s', e, line, Utils.ex_stack())
