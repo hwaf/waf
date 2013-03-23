@@ -496,14 +496,16 @@ def gather_intel_composer_versions(conf, versions):
 					setattr(conf, compilervars_warning_attr, False)
 					patch_url = 'http://software.intel.com/en-us/forums/topic/328487'
 					compilervars_arch = os.path.join(path, 'bin', 'compilervars_arch.bat')
-					vs_express_path = os.environ['VS110COMNTOOLS'] + r'..\IDE\VSWinExpress.exe'
-					dev_env_path = os.environ['VS110COMNTOOLS'] + r'..\IDE\devenv.exe'
-					if (r'if exist "%VS110COMNTOOLS%..\IDE\VSWinExpress.exe"' in Utils.readf(compilervars_arch) and
-						not os.path.exists(vs_express_path) and not os.path.exists(dev_env_path)):
-						Logs.warn(('The Intel compilervar_arch.bat only checks for one Visual Studio SKU '
-						           '(VSWinExpress.exe) but it does not seem to be installed at %r. '
-						           'The intel command line set up will fail to configure unless the file %r'
-						           'is patched. See: %s') % (vs_express_path, compilervars_arch, patch_url))
+					for vscomntools in ['VS110COMNTOOLS', 'VS100COMNTOOLS']:
+						if os.environ.has_key (vscomntools):
+							vs_express_path = os.environ[vscomntools] + r'..\IDE\VSWinExpress.exe'
+							dev_env_path = os.environ[vscomntools] + r'..\IDE\devenv.exe'
+							if (r'if exist "%VS110COMNTOOLS%..\IDE\VSWinExpress.exe"' in Utils.readf(compilervars_arch) and
+								not os.path.exists(vs_express_path) and not os.path.exists(dev_env_path)):
+								Logs.warn(('The Intel compilervar_arch.bat only checks for one Visual Studio SKU '
+								           '(VSWinExpress.exe) but it does not seem to be installed at %r. '
+								           'The intel command line set up will fail to configure unless the file %r'
+								           'is patched. See: %s') % (vs_express_path, compilervars_arch, patch_url))
 			except WindowsError:
 				pass
 		major = version[0:2]
