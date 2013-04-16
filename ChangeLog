@@ -1,3 +1,7 @@
+NEW IN WAF 1.7.11
+-----------------
+* Node.delete remove empty folders #1278
+
 NEW IN WAF 1.7.10
 -----------------
 * Enhancements in the LaTeX support #1248
