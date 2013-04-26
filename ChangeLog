@@ -1,6 +1,7 @@
 NEW IN WAF 1.7.11
 -----------------
 * Node.delete remove empty folders #1278
+* Detection of convert in parallel_debug #1300
 
 NEW IN WAF 1.7.10
 -----------------
