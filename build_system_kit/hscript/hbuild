@@ -1,0 +1,11 @@
+## -*- yaml -*-
+
+build: {
+  my-app: {
+    features: "c cprogram",
+    source: "main.c",
+    
+  },
+
+}
+## EOF ##
