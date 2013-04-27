@@ -279,9 +279,15 @@ class ConfigSet(object):
 		merged_table = self.get_merged_dict()
 		keys = list(merged_table.keys())
 		keys.sort()
+
+		try:
+			fun = ascii
+		except NameError:
+			fun = repr
+
 		for k in keys:
 			if k != 'undo_stack':
-				buf.append('%s = %r\n' % (k, merged_table[k]))
+				buf.append('%s = %s\n' % (k, fun(merged_table[k])))
 		Utils.writef(filename, ''.join(buf))
 
 	def load(self, filename):
