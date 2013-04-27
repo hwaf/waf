@@ -199,27 +199,23 @@ class tex(Task.Task):
 
 	def bibfile(self):
 		"""
-		Parse the *.aux* files to find a bibfile to process.
+		Parse the *.aux* files to find bibfiles to process.
 		If yes, execute :py:meth:`waflib.Tools.tex.tex.bibtex_fun`
 		"""
-		need_bibtex = False
-		try:
-			for aux_node in self.aux_nodes:
+		for aux_node in self.aux_nodes:
+			try:
 				ct = aux_node.read()
-				if g_bibtex_re.findall(ct):
-					need_bibtex = True
-					break
-		except (OSError, IOError):
-			Logs.error('error bibtex scan')
-		else:
-			# only the main .aux file needs to be processed
-			if need_bibtex:
+			except (OSError, IOError):
+				Logs.error('Error reading %s: %r' % aux_node.abspath())
+				continue
+
+			if g_bibtex_re.findall(ct):
 				Logs.warn('calling bibtex')
 
 				self.env.env = {}
 				self.env.env.update(os.environ)
 				self.env.env.update({'BIBINPUTS': self.TEXINPUTS, 'BSTINPUTS': self.TEXINPUTS})
-				self.env.SRCFILE = self.aux_nodes[0].name[:-4]
+				self.env.SRCFILE = aux_node.name[:-4]
 				self.check_status('error when calling bibtex', self.bibtex_fun())
 
 	def bibunits(self):
@@ -258,6 +254,14 @@ class tex(Task.Task):
 			self.env.SRCFILE = self.idx_node.name
 			self.env.env = {}
 			self.check_status('error when calling makeindex %s' % idx_path, self.makeindex_fun())
+
+	def bibtopic(self):
+		"""
+		Additional .aux files from the bibtopic package
+		"""
+		p = self.inputs[0].parent.get_bld()
+		if os.path.exists(os.path.join(p.abspath(), 'btaux.aux')):
+			self.aux_nodes += p.ant_glob('*[0-9].aux')
 
 	def run(self):
 		"""
@@ -298,6 +302,7 @@ class tex(Task.Task):
 		self.aux_nodes = self.scan_aux(node.change_ext('.aux'))
 		self.idx_node = node.change_ext('.idx')
 
+		self.bibtopic()
 		self.bibfile()
 		self.bibunits()
 		self.makeindex()
