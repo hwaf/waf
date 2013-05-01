@@ -422,6 +422,7 @@ def configure(self):
 	"""
 	self.find_qt4_binaries()
 	self.set_qt4_libs_to_check()
+	self.set_qt4_defines()
 	self.find_qt4_libraries()
 	self.add_qt4_rpath()
 	self.simplify_qt4_libs()
@@ -665,6 +666,15 @@ def set_qt4_libs_to_check(self):
 	if not hasattr(self, 'qt4_vars_debug'):
 		self.qt4_vars_debug = [a + '_debug' for a in self.qt4_vars]
 	self.qt4_vars_debug = Utils.to_list(self.qt4_vars_debug)
+
+@conf
+def set_qt4_defines(self):
+	if sys.platform != 'win32':
+		return
+	for x in self.qt4_vars:
+		y = x[2:].upper()
+		self.env.append_unique('DEFINES_%s' % x.upper(), 'QT_%s_LIB' % y)
+		self.env.append_unique('DEFINES_%s_DEBUG' % x.upper(), 'QT_%s_LIB' % y)
 
 def options(opt):
 	"""

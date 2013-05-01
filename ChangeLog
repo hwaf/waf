@@ -4,6 +4,7 @@ NEW IN WAF 1.7.11
 * Detection of convert in parallel_debug #1300
 * Bibtopic support #1299
 * Safer encoding for ConfigSet files #1297
+* Qt defines on windows #1272
 
 NEW IN WAF 1.7.10
 -----------------
