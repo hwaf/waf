@@ -101,7 +101,7 @@ File extensions of C++ files that may require a .moc processing
 
 QT4_LIBS = "QtCore QtGui QtUiTools QtNetwork QtOpenGL QtSql QtSvg QtTest QtXml QtXmlPatterns QtWebKit Qt3Support QtHelp QtScript QtDeclarative"
 
-class qxx(cxx.cxx):
+class qxx(Task.classes['cxx']):
 	"""
 	Each C++ file can have zero or several .moc files to create.
 	They are known only when the files are scanned (preprocessor)
