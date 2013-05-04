@@ -252,7 +252,7 @@ for z in lst:
 		if str(m.__module__).find('.Tools') > 0:
 			k = 'tools/' + k
 
-		ms.append('\t"%s" [style="setlinewidth(0.5)",URL="%s",fontname=Vera Sans, DejaVu Sans, Liberation Sans, Arial, Helvetica, sans,height=0.25,shape=box,fontsize=10%s];' % (x, k, x in TaskGen.feats[z] and color or ''))
+		ms.append('\t"%s" [style="setlinewidth(0.5)",URL="%s",fontname="Vera Sans, DejaVu Sans, Liberation Sans, Arial, Helvetica, sans",height=0.25,shape=box,fontsize=10%s];' % (x, k, x in TaskGen.feats[z] and color or ''))
 
 	for x, y in links:
 		ms.append('\t"%s" -> "%s" [arrowsize=0.5,style="setlinewidth(0.5)"];' % (x, y))
