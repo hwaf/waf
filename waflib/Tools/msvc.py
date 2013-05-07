@@ -975,7 +975,6 @@ def exec_command_msvc(self, *k, **kw):
 	Change the command-line execution for msvc programs.
 	Instead of quoting all the paths and keep using the shell, we can just join the options msvc is interested in
 	"""
-	assert self.env['CC_NAME'] == 'msvc'
 	if isinstance(k[0], list):
 		lst = []
 		carry = ''
