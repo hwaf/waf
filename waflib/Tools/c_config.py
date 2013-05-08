@@ -1095,7 +1095,7 @@ def get_cc_version(conf, cc, gcc=False, icc=False):
 			conf.env.DEST_BINFMT = 'elf'
 		elif isD('__WINNT__') or isD('__CYGWIN__'):
 			conf.env.DEST_BINFMT = 'pe'
-			conf.env.LIBDIR = conf.env['PREFIX'] + '/bin'
+			conf.env.LIBDIR = conf.env.BINDIR
 		elif isD('__APPLE__'):
 			conf.env.DEST_BINFMT = 'mac-o'
 
