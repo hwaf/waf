@@ -641,7 +641,7 @@ def simplify_qt4_libs(self):
 def add_qt4_rpath(self):
 	# rpath if wanted
 	env = self.env
-	if Options.options.want_rpath:
+	if getattr(Options.options, 'want_rpath', False):
 		def process_rpath(vars_, coreval):
 			for d in vars_:
 				var = d.upper()
