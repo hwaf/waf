@@ -84,9 +84,7 @@ re_pragma_once = re.compile('^\s*once\s*', re.IGNORECASE)
 re_nl = re.compile('\\\\\r*\n', re.MULTILINE)
 """Match newlines"""
 
-re_cpp = re.compile(
-	r"""(/\*[^*]*\*+([^/*][^*]*\*+)*/)|//[^\n]*|("(\\.|[^"\\])*"|'(\\.|[^'\\])*'|.[^/"'\\]*)""",
-	re.MULTILINE)
+re_cpp = re.compile(r'//.*?$|/\*.*?\*/|\'(?:\\.|[^\\\'])*\'|"(?:\\.|[^\\"])*"', re.DOTALL | re.MULTILINE )
 """Filter C/C++ comments"""
 
 trig_def = [('??'+a, b) for a, b in zip("=-/!'()<>", r'#~\|^[]{}')]
@@ -138,10 +136,10 @@ skipped   = 's'
 
 def repl(m):
 	"""Replace function used with :py:attr:`waflib.Tools.c_preproc.re_cpp`"""
-	s = m.group(1)
-	if s:
+	s = m.group(0)
+	if s.startswith('/'):
 		return ' '
-	return m.group(3) or ''
+	return s
 
 def filter_comments(filename):
 	"""
