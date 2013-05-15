@@ -4,67 +4,157 @@ import os, sys, imp
 import yaml
 
 from waflib import Context, Options, Configure, Utils, Logs
+import waflib.Logs as msg
 
-def options(opt):
-	opt.load('compiler_c')
+HSCRIPT = 'hbuild.yml'
+# override waf default: 'wscript' -> HSCRIPT
+Context.WSCRIPT_FILE = HSCRIPT
 
-def configure(conf):
-	conf.options = Options.options
-	conf.load('compiler_c')
+## replace the Context.load_module with this one, to translate HSCRIPT files
+## into 'wscript' ones, on the fly.
+def load_module(path):
+    """
+    Load a source file as a python module.
 
-
-def build(bld):
-    f = bld.path.find_node('hbuild')
-    if not f:
-        bld.fatal("no hbuild file")
+    :param path: file path
+    :type path: string
+    :return: Loaded Python module
+    :rtype: module
+    """
+    cache_modules = Context.cache_modules
+    try:
+        return cache_modules[path]
+    except KeyError:
         pass
-    dct = yaml.load(open(f.abspath()))
 
-    build_tgts = dct['build']
+    module = imp.new_module(Context.WSCRIPT_FILE)
+    try:
+        dct = yaml.load(open(path, 'rU'))
+    except (IOError, OSError):
+        raise Errors.WafError('Could not read the file %r' % path)
 
-    for tgt_name, tgt_data in build_tgts.items():
-        #Logs.info(">>> %s: %s" % (tgt_name, tgt_data))
-        tgt_dct = dict(tgt_data)
-        tgt_dct['target'] = tgt_data.get('target', tgt_name)
-        tgt_dct['name'] = tgt_name
-        tgt = bld(**tgt_dct)
+    module_dir = os.path.dirname(path)
+    sys.path.insert(0, module_dir)
 
-def recurse_rep(x, y):
-	f = getattr(Context.g_module, x.cmd or x.fun, Utils.nada)
-	return f(x)
+    ## translate the yaml code into python-waf code
+    ## options
+    code = gen_py_code(dct, path)
+    exec(compile(code, path, 'exec'), module.__dict__)
+    
+    sys.path.remove(module_dir)
 
-def start(cwd, version, wafdir):
-	try:
-		os.stat(cwd + os.sep + 'hbuild')
-	except:
-		print('call from a folder containing a file named "hbuild"')
-		sys.exit(1)
+    cache_modules[path] = module
 
-	Logs.init_log()
-	Context.waf_dir = wafdir
-	Context.top_dir = Context.run_dir = Context.launch_dir = cwd
-	Context.out_dir = os.path.join(cwd, 'build')
-	Context.g_module = imp.new_module('wscript')
-	Context.g_module.root_path = os.path.join(cwd, 'hbuild')
-	Context.Context.recurse = recurse_rep
+    return module
+Context.load_module = load_module
 
-	# this is a fake module, which looks like a standard wscript file
-	Context.g_module.options = options
-	Context.g_module.configure = configure
-	Context.g_module.build = build
+def gen_py_code(dct, fname):
+    """
+    Generate a valid python code from a YAML dict
+    """
+    try:                from io import StringIO
+    except ImportError: from cStringIO import StringIO
+    buf = StringIO()
 
-	Options.OptionsContext().execute()
+    from textwrap import dedent
+    def _w(*args):
+        return buf.write(dedent(*args))
+    _w(
+        '''\
+        ## -*- python -*-
+        # stdlib imports ----------------
+        import os
+        import os.path as osp
 
-	do_config = 'configure' in sys.argv
-	do_build = len(sys.argv) == 1 or 'build' in sys.argv
-	try:
-		os.stat(Context.out_dir)
-	except:
-		do_config = True
-	if do_config:
-		Context.create_context('configure').execute()
+        # waf imports -------------------
+        import waflib.Logs as msg
 
-	if 'clean' in sys.argv:
-		Context.create_context('clean').execute()
-	if do_build:
-		Context.create_context('build').execute()
+        # functions ---------------------
+        '''
+        )
+    ## process project section
+    ## TODO
+    
+    ## process package section
+    if not 'package' in dct:
+        raise Errors.WafError('Missing "package" section in file [%s]' % fname)
+        pass
+    
+    _w(
+        '''\
+        PACKAGE = {
+        \t"name": %(name)r,
+        \t"authors": %(authors)r,
+        }
+
+        def pkg_deps(ctx):
+        ''' % dct['package'],
+        )
+    if 'deps' in dct['package']:
+        pkgs = dct['package']['deps'].get('public', [])
+        for pkg in pkgs:
+            buf.write('\tctx.use_pkg(%r)\n' % pkg)
+            pass
+        pass
+    buf.write('\treturn # pkg_deps\n\n')
+
+    ## process options section
+    if dct.get('options', None):
+        _w(
+            '''\
+            def options(ctx):
+            '''
+            )
+        tools = dct['options'].get('tools', [])
+        for tool_name in tools:
+            buf.write('\tctx.load(%r)\n' % tool_name)
+            pass
+        ## TODO: also allows to add option-flags ?
+        ## ctx.options.add_opt(...)
+        buf.write('\treturn # options\n\n')
+        pass
+
+    ## process configure section
+    if dct.get('configure', None):
+        _w(
+            '''\
+            def configure(ctx):
+            \tmsg.debug("[configure] package name: %(name)s")
+            ''' % dct['package']
+            )
+        tools = dct['configure'].get('tools', [])
+        for tool_name in tools:
+            buf.write('\tctx.load(%r)\n' % tool_name)
+            pass
+        # TODO: env
+        # TODO: export_tools
+        buf.write('\treturn # configure\n\n')
+        pass
+
+    ## process build section
+    if dct.get('build', None):
+        _w(
+            '''\
+            def build(ctx):
+            \tmsg.debug('[build] package name: %(name)s')
+            ''' % dct['package'],
+            )
+        for tgt_name, tgt_data in dct['build'].items():
+            tgt_dct = dict(tgt_data)
+            tgt_dct['target'] = tgt_data.get('target', tgt_name)
+            buf.write('\tctx(\n')
+            for k, v in tgt_dct.items():
+                buf.write('\t\t%s = %r,\n'% (k,v))
+                pass
+            buf.write('\t)# target: %s\n' % tgt_name)
+            pass
+        # TODO: install-scripts
+        buf.write('\treturn # build\n\n')
+        pass
+
+    _w('## EOF ##\n')
+    
+    code = buf.getvalue()
+    buf.close()
+    if 0: msg.info("loading code:\n%s" % code)
+    return code

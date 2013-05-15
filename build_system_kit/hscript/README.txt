@@ -1,7 +1,7 @@
 This example derives from the 'overview' and demonstrates how to provide
 a build tool with yaml-based build files.
 
-The script files read are named 'hbuild'
+The script files read are named 'hbuild.yml'
 
 To create the build tool:
    ./create_it.sh

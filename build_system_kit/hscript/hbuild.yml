@@ -6,6 +6,5 @@ build: {
     source: "main.c",
     
   },
-
 }
 ## EOF ##
