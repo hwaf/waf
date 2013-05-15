@@ -46,6 +46,7 @@ def load_module(path):
     cache_modules[path] = module
 
     return module
+#Context.orig_load_module = Context.load_module
 Context.load_module = load_module
 
 def gen_py_code(dct, fname):
@@ -122,6 +123,21 @@ def gen_py_code(dct, fname):
             \tmsg.debug("[configure] package name: %(name)s")
             ''' % dct['package']
             )
+        # escape-hatch
+        if 'hwaf-call' in dct['configure']:
+            calls = dct['configure']['hwaf-call']
+            for script in calls:
+                tooldir = '.'
+                dirname = os.path.dirname(script)
+                if dirname: tooldir = dirname
+                fname = os.path.basename(script)
+                if fname.endswith('.py'):
+                   fname = os.path.splitext(fname)[0]
+                buf.write('\tctx.load(%r, tooldir=%r)\n' % (fname, tooldir))
+                pass
+            pass
+
+        # load tools
         tools = dct['configure'].get('tools', [])
         for tool_name in tools:
             buf.write('\tctx.load(%r)\n' % tool_name)
@@ -139,7 +155,24 @@ def gen_py_code(dct, fname):
             \tmsg.debug('[build] package name: %(name)s')
             ''' % dct['package'],
             )
+        # escape-hatch
+        if 'hwaf-call' in dct['build']:
+            calls = dct['build']['hwaf-call']
+            for script in calls:
+                tooldir = '.'
+                dirname = os.path.dirname(script)
+                if dirname: tooldir = dirname
+                fname = os.path.basename(script)
+                if fname.endswith('.py'):
+                   fname = os.path.splitext(fname)[0]
+                buf.write('\tctx.load(%r, tooldir=%r)\n' % (fname, tooldir))
+                pass
+            pass
+
+        # declare targets
         for tgt_name, tgt_data in dct['build'].items():
+            if tgt_name.startswith('hwaf-'):
+                continue
             tgt_dct = dict(tgt_data)
             tgt_dct['target'] = tgt_data.get('target', tgt_name)
             buf.write('\tctx(\n')
@@ -149,6 +182,7 @@ def gen_py_code(dct, fname):
             buf.write('\t)# target: %s\n' % tgt_name)
             pass
         # TODO: install-scripts
+
         buf.write('\treturn # build\n\n')
         pass
 
