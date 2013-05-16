@@ -71,6 +71,13 @@ def gen_py_code(dct, fname):
         import waflib.Logs as msg
 
         # functions ---------------------
+        def _hwaf_load_fct(ctx, pkgname, fname):
+            import imp
+            f = open(fname, 'r')
+            mod_name = '.'.join(['__hwaf__']+pkgname.split('/')+f.name[:-3].split('/'))
+            mod = imp.load_source(mod_name, f.name, f)
+            f.close()
+            return getattr(mod, ctx.fun)(ctx)
         '''
         )
     ## process project section
@@ -91,6 +98,7 @@ def gen_py_code(dct, fname):
         def pkg_deps(ctx):
         ''' % dct['package'],
         )
+    pkgname = dct['package']['name']
     if 'deps' in dct['package']:
         pkgs = dct['package']['deps'].get('public', [])
         for pkg in pkgs:
@@ -127,13 +135,7 @@ def gen_py_code(dct, fname):
         if 'hwaf-call' in dct['configure']:
             calls = dct['configure']['hwaf-call']
             for script in calls:
-                tooldir = '.'
-                dirname = os.path.dirname(script)
-                if dirname: tooldir = dirname
-                fname = os.path.basename(script)
-                if fname.endswith('.py'):
-                   fname = os.path.splitext(fname)[0]
-                buf.write('\tctx.load(%r, tooldir=%r)\n' % (fname, tooldir))
+                buf.write('\t_hwaf_load_fct(ctx, %r, %r)\n' % (pkgname,script,))
                 pass
             pass
 
@@ -159,13 +161,7 @@ def gen_py_code(dct, fname):
         if 'hwaf-call' in dct['build']:
             calls = dct['build']['hwaf-call']
             for script in calls:
-                tooldir = '.'
-                dirname = os.path.dirname(script)
-                if dirname: tooldir = dirname
-                fname = os.path.basename(script)
-                if fname.endswith('.py'):
-                   fname = os.path.splitext(fname)[0]
-                buf.write('\tctx.load(%r, tooldir=%r)\n' % (fname, tooldir))
+                buf.write('\t_hwaf_load_fct(ctx, %r, %r)\n' % (pkgname,script,))
                 pass
             pass
 
@@ -190,5 +186,5 @@ def gen_py_code(dct, fname):
     
     code = buf.getvalue()
     buf.close()
-    if 0: msg.info("loading code:\n%s" % code)
+    if 1: msg.info("loading code:\n%s" % code)
     return code
