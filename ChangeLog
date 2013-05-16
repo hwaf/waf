@@ -6,6 +6,7 @@ NEW IN WAF 1.7.11
 * Safer encoding for ConfigSet files #1297
 * Qt defines on windows #1272
 * QtDesigner library detection #1315
+* Redundant check_dir call causing random uninstall failures #1313
 
 NEW IN WAF 1.7.10
 -----------------
