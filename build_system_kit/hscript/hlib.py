@@ -3,13 +3,24 @@
 import os, sys, imp
 import yaml
 
-from waflib import Context, Options, Configure, Utils, Logs
+from waflib import Context, Errors, Options, Configure, Utils, Logs
 import waflib.Logs as msg
 
-HSCRIPT = 'hbuild.yml'
+HSCRIPT_FILE = 'hbuild.yml'
+WSCRIPT_FILE = Context.WSCRIPT_FILE
+_SCRIPT_FILES = (HSCRIPT_FILE, WSCRIPT_FILE)
 # override waf default: 'wscript' -> HSCRIPT
-Context.WSCRIPT_FILE = HSCRIPT
+Context.WSCRIPT_FILE = HSCRIPT_FILE
 
+def _get_script(path):
+    for script_file in _SCRIPT_FILES:
+        dirname = os.path.dirname(path)
+        p = os.path.join(dirname, script_file)
+        if os.path.exists(p):
+            return p, script_file
+    return path, WSCRIPT_FILE
+
+orig_load_module = Context.load_module
 ## replace the Context.load_module with this one, to translate HSCRIPT files
 ## into 'wscript' ones, on the fly.
 def load_module(path):
@@ -26,13 +37,28 @@ def load_module(path):
         return cache_modules[path]
     except KeyError:
         pass
+    #print(">>> load_module(%r)..." % path)
+    path, script_file = _get_script(path)
+    #print(">>> load_module(%r)..." % path)
 
+    if script_file == WSCRIPT_FILE:
+        try:
+            #print ("+++>")
+            Context.WSCRIPT_FILE = WSCRIPT_FILE
+            mod = orig_load_module(path)
+            Context.WSCRIPT_FILE = HSCRIPT_FILE
+            #print ("<+++")
+            return mod
+        finally:
+            Context.WSCRIPT_FILE = HSCRIPT_FILE
+        pass
+    
     module = imp.new_module(Context.WSCRIPT_FILE)
     try:
         dct = yaml.load(open(path, 'rU'))
     except (IOError, OSError):
         raise Errors.WafError('Could not read the file %r' % path)
-
+    
     module_dir = os.path.dirname(path)
     sys.path.insert(0, module_dir)
 
@@ -46,8 +72,26 @@ def load_module(path):
     cache_modules[path] = module
 
     return module
-#Context.orig_load_module = Context.load_module
 Context.load_module = load_module
+
+orig_recurse = Context.Context.recurse
+def recurse(self, dirs, name=None, mandatory=True, once=True):
+    orig_script_file = Context.WSCRIPT_FILE
+    for script_file in _SCRIPT_FILES:
+        try:
+            Context.WSCRIPT_FILE = script_file
+            #print(">>> trying [%s]... (%s)" % (script_file,dirs))
+            return orig_recurse(self, dirs, name, mandatory, once)
+        except Errors.WafError as err:
+            Context.WSCRIPT_FILE = orig_script_file
+            if script_file == _SCRIPT_FILES[-1]:
+                raise
+            pass
+        finally:
+            Context.WSCRIPT_FILE = orig_script_file
+        pass
+    raise
+Context.Context.recurse = recurse
 
 def gen_py_code(dct, fname):
     """
@@ -73,11 +117,13 @@ def gen_py_code(dct, fname):
         # functions ---------------------
         def _hwaf_load_fct(ctx, pkgname, fname):
             import imp
-            f = open(fname, 'r')
+            name = ctx.path.find_node(fname).abspath()
+            f = open(name, 'r')
             mod_name = '.'.join(['__hwaf__']+pkgname.split('/')+f.name[:-3].split('/'))
             mod = imp.load_source(mod_name, f.name, f)
             f.close()
-            return getattr(mod, ctx.fun)(ctx)
+            return getattr(mod, ctx.fun)(ctx)\n\n
+        # -------------------------------
         '''
         )
     ## process project section
@@ -186,5 +232,5 @@ def gen_py_code(dct, fname):
     
     code = buf.getvalue()
     buf.close()
-    if 1: msg.info("loading code:\n%s" % code)
+    if 0: msg.info("loading code:\n%s" % code)
     return code
