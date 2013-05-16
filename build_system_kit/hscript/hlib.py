@@ -8,9 +8,9 @@ import waflib.Logs as msg
 
 HSCRIPT_FILE = 'hbuild.yml'
 WSCRIPT_FILE = Context.WSCRIPT_FILE
-_SCRIPT_FILES = (HSCRIPT_FILE, WSCRIPT_FILE)
+_SCRIPT_FILES = (WSCRIPT_FILE, HSCRIPT_FILE, )
 # override waf default: 'wscript' -> HSCRIPT
-Context.WSCRIPT_FILE = HSCRIPT_FILE
+#Context.WSCRIPT_FILE = HSCRIPT_FILE
 
 def _get_script(path):
     for script_file in _SCRIPT_FILES:
@@ -76,21 +76,35 @@ Context.load_module = load_module
 
 orig_recurse = Context.Context.recurse
 def recurse(self, dirs, name=None, mandatory=True, once=True):
-    orig_script_file = Context.WSCRIPT_FILE
-    for script_file in _SCRIPT_FILES:
+    orig_script_file = HSCRIPT_FILE
+    is_opt = self.fun in ('options',)
+    for d in Utils.to_list(dirs):
         try:
-            Context.WSCRIPT_FILE = script_file
-            #print(">>> trying [%s]... (%s)" % (script_file,dirs))
-            return orig_recurse(self, dirs, name, mandatory, once)
-        except Errors.WafError as err:
-            Context.WSCRIPT_FILE = orig_script_file
-            if script_file == _SCRIPT_FILES[-1]:
-                raise
+            Context.WSCRIPT_FILE = WSCRIPT_FILE
+            orig_recurse(self, [d], name, mandatory, once)
+        except:
             pass
+        else:
+            if not is_opt:
+                # 'options' is optional.
+                # so we need to also look into HSCRIPT_FILE in case
+                # the WSCRIPT_FILE didn't have any
+                continue
+        try:
+            Context.WSCRIPT_FILE = HSCRIPT_FILE
+            orig_recurse(self, [d], name, mandatory, once)
+        except:
+            if not is_opt:
+                # 'options' is optional.
+                # so we need to also look into HSCRIPT_FILE in case
+                # the WSCRIPT_FILE didn't have any
+                raise
+        else:
+            continue
         finally:
-            Context.WSCRIPT_FILE = orig_script_file
+            Context.WSCRIPT_FILE = WSCRIPT_FILE
         pass
-    raise
+    return
 Context.Context.recurse = recurse
 
 def gen_py_code(dct, fname):
@@ -160,6 +174,13 @@ def gen_py_code(dct, fname):
             def options(ctx):
             '''
             )
+        # escape-hatch
+        if 'hwaf-call' in dct['options']:
+            calls = dct['options']['hwaf-call']
+            for script in calls:
+                buf.write('\t_hwaf_load_fct(ctx, %r, %r)\n' % (pkgname,script,))
+                pass
+            pass
         tools = dct['options'].get('tools', [])
         for tool_name in tools:
             buf.write('\tctx.load(%r)\n' % tool_name)
@@ -232,5 +253,5 @@ def gen_py_code(dct, fname):
     
     code = buf.getvalue()
     buf.close()
-    if 0: msg.info("loading code:\n%s" % code)
+    if os.getenv('HWAF_DUMP_HSCRIPT'): msg.info("loading code:\n%s" % code)
     return code
