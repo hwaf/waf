@@ -5,6 +5,7 @@ NEW IN WAF 1.7.11
 * Bibtopic support #1299
 * Safer encoding for ConfigSet files #1297
 * Qt defines on windows #1272
+* QtDesigner library detection #1315
 
 NEW IN WAF 1.7.10
 -----------------

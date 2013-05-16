@@ -99,7 +99,7 @@ EXT_QT4 = ['.cpp', '.cc', '.cxx', '.C']
 File extensions of C++ files that may require a .moc processing
 """
 
-QT4_LIBS = "QtCore QtGui QtUiTools QtNetwork QtOpenGL QtSql QtSvg QtTest QtXml QtXmlPatterns QtWebKit Qt3Support QtHelp QtScript QtDeclarative"
+QT4_LIBS = "QtCore QtGui QtUiTools QtNetwork QtOpenGL QtSql QtSvg QtTest QtXml QtXmlPatterns QtWebKit Qt3Support QtHelp QtScript QtDeclarative QtDesigner"
 
 class qxx(Task.classes['cxx']):
 	"""
