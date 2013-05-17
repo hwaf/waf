@@ -41,6 +41,11 @@ def load_module(path):
     path, script_file = _get_script(path)
     #print(">>> load_module(%r)..." % path)
 
+    fmode = 'rU'
+    if sys.hexversion > 0x3000000 and not 'b' in fmode:
+        fmode += 'b'
+        pass
+    
     if script_file == WSCRIPT_FILE:
         try:
             #print ("+++>")
@@ -53,9 +58,9 @@ def load_module(path):
             Context.WSCRIPT_FILE = HSCRIPT_FILE
         pass
     
-    module = imp.new_module(Context.WSCRIPT_FILE)
+    module = imp.new_module(Context.WSCRIPT_FILE.replace('.','_'))
     try:
-        dct = yaml.load(open(path, 'rU'))
+        dct = yaml.load(open(path, fmode))
     except (IOError, OSError):
         raise Errors.WafError('Could not read the file %r' % path)
     
@@ -107,17 +112,26 @@ def recurse(self, dirs, name=None, mandatory=True, once=True):
     return
 Context.Context.recurse = recurse
 
-def gen_py_code(dct, fname):
+def gen_py_code(dct, fname, encoding='ISO8859-1'):
     """
     Generate a valid python code from a YAML dict
     """
     try:                from io import StringIO
     except ImportError: from cStringIO import StringIO
     buf = StringIO()
-
-    from textwrap import dedent
-    def _w(*args):
-        return buf.write(dedent(*args))
+    if sys.hexversion < 0x3000000:
+        def _write(txt):
+            return buf.write(txt.decode(encoding))
+        from textwrap import dedent
+        def _w(*args):
+            return buf.write(dedent(*args).decode(encoding))
+    else:
+        def _write(txt):
+            return buf.write(txt)
+        from textwrap import dedent
+        def _w(*args):
+            return buf.write(dedent(*args))
+        pass
     _w(
         '''\
         ## -*- python -*-
@@ -162,10 +176,10 @@ def gen_py_code(dct, fname):
     if 'deps' in dct['package']:
         pkgs = dct['package']['deps'].get('public', [])
         for pkg in pkgs:
-            buf.write('\tctx.use_pkg(%r)\n' % pkg)
+            _write('\tctx.use_pkg(%r)\n' % pkg)
             pass
         pass
-    buf.write('\treturn # pkg_deps\n\n')
+    _write('\treturn # pkg_deps\n\n')
 
     ## process options section
     if dct.get('options', None):
@@ -178,16 +192,16 @@ def gen_py_code(dct, fname):
         if 'hwaf-call' in dct['options']:
             calls = dct['options']['hwaf-call']
             for script in calls:
-                buf.write('\t_hwaf_load_fct(ctx, %r, %r)\n' % (pkgname,script,))
+                _write('\t_hwaf_load_fct(ctx, %r, %r)\n' % (pkgname,script,))
                 pass
             pass
         tools = dct['options'].get('tools', [])
         for tool_name in tools:
-            buf.write('\tctx.load(%r)\n' % tool_name)
+            _write('\tctx.load(%r)\n' % tool_name)
             pass
         ## TODO: also allows to add option-flags ?
         ## ctx.options.add_opt(...)
-        buf.write('\treturn # options\n\n')
+        _write('\treturn # options\n\n')
         pass
 
     ## process configure section
@@ -202,18 +216,18 @@ def gen_py_code(dct, fname):
         if 'hwaf-call' in dct['configure']:
             calls = dct['configure']['hwaf-call']
             for script in calls:
-                buf.write('\t_hwaf_load_fct(ctx, %r, %r)\n' % (pkgname,script,))
+                _write('\t_hwaf_load_fct(ctx, %r, %r)\n' % (pkgname,script,))
                 pass
             pass
 
         # load tools
         tools = dct['configure'].get('tools', [])
         for tool_name in tools:
-            buf.write('\tctx.load(%r)\n' % tool_name)
+            _write('\tctx.load(%r)\n' % tool_name)
             pass
         # TODO: env
         # TODO: export_tools
-        buf.write('\treturn # configure\n\n')
+        _write('\treturn # configure\n\n')
         pass
 
     ## process build section
@@ -228,7 +242,7 @@ def gen_py_code(dct, fname):
         if 'hwaf-call' in dct['build']:
             calls = dct['build']['hwaf-call']
             for script in calls:
-                buf.write('\t_hwaf_load_fct(ctx, %r, %r)\n' % (pkgname,script,))
+                _write('\t_hwaf_load_fct(ctx, %r, %r)\n' % (pkgname,script,))
                 pass
             pass
 
@@ -238,15 +252,15 @@ def gen_py_code(dct, fname):
                 continue
             tgt_dct = dict(tgt_data)
             tgt_dct['target'] = tgt_data.get('target', tgt_name)
-            buf.write('\tctx(\n')
+            _write('\tctx(\n')
             for k, v in tgt_dct.items():
-                buf.write('\t\t%s = %r,\n'% (k,v))
+                _write('\t\t%s = %r,\n'% (k,v))
                 pass
-            buf.write('\t)# target: %s\n' % tgt_name)
+            _write('\t)# target: %s\n' % tgt_name)
             pass
         # TODO: install-scripts
 
-        buf.write('\treturn # build\n\n')
+        _write('\treturn # build\n\n')
         pass
 
     _w('## EOF ##\n')
