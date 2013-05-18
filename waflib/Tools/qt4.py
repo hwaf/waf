@@ -335,7 +335,7 @@ def apply_qt4(self):
 				lst.append('-' + flag[1:])
 			else:
 				lst.append(flag)
-	self.env['MOC_FLAGS'] = lst
+	self.env.append_value('MOC_FLAGS', lst)
 
 @extension(*EXT_QT4)
 def cxx_hook(self, node):
