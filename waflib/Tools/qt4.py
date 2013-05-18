@@ -115,14 +115,21 @@ class qxx(Task.classes['cxx']):
 		self.moc_done = 0
 
 	def scan(self):
-		"""Re-use the C/C++ scanner, but remove the moc files from the dependencies"""
+		"""
+		Re-use the C/C++ scanner, but remove the moc files from the dependencies
+		since the .cpp file already depends on all the headers
+		"""
 		(nodes, names) = c_preproc.scan(self)
-		# for some reasons (variants) the moc node may end in the list of node deps
+		lst = []
 		for x in nodes:
+			# short lists, no need to use sets
 			if x.name.endswith('.moc'):
-				nodes.remove(x)
-				names.append(x.path_from(self.inputs[0].parent.get_bld()))
-		return (nodes, names)
+				s = x.path_from(self.inputs[0].parent.get_bld())
+				if s not in names:
+					names.append(s)
+			else:
+				lst.append(x)
+		return (lst, names)
 
 	def runnable_status(self):
 		"""

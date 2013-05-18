@@ -9,6 +9,7 @@ NEW IN WAF 1.7.11
 * Redundant check_dir call causing random uninstall failures #1313
 * Append to moc flags instead of replacing them #1317
 * Share moc tasks in the Qt processing #1318
+* Fixed a source of unnecessary rebuilds in the Qt processing
 
 NEW IN WAF 1.7.10
 -----------------
