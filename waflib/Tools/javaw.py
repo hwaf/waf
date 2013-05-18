@@ -302,7 +302,7 @@ class javac(Task.Task):
 			ret = self.exec_command(cmd, cwd=wd, env=env.env or None)
 		finally:
 			if tmp:
-				os.unlink(tmp)
+				os.remove(tmp)
 		return ret
 
 	def post_run(self):

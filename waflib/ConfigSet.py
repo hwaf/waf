@@ -42,7 +42,7 @@ class ConfigSet(object):
 		Enable the *in* syntax::
 
 			if 'foo' in env:
-				print env['foo']
+				print(env['foo'])
 		"""
 		if key in self.table: return True
 		try: return self.parent.__contains__(key)

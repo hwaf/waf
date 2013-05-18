@@ -339,7 +339,7 @@ class BuildContext(Context.Context):
 
 		try:
 			st = os.stat(db)
-			os.unlink(db)
+			os.remove(db)
 			if not Utils.is_win32: # win32 has no chown but we're paranoid
 				os.chown(db + '.tmp', st.st_uid, st.st_gid)
 		except (AttributeError, OSError):
@@ -1158,7 +1158,7 @@ class UninstallContext(InstallContext):
 		"""See :py:meth:`waflib.Build.InstallContext.do_link`"""
 		try:
 			if not self.progress_bar:
-				Logs.info('- unlink %s' % tgt)
+				Logs.info('- remove %s' % tgt)
 			os.remove(tgt)
 		except OSError:
 			pass

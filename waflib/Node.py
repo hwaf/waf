@@ -188,7 +188,7 @@ class Node(object):
 			if hasattr(self, 'children'):
 				shutil.rmtree(self.abspath())
 			else:
-				os.unlink(self.abspath())
+				os.remove(self.abspath())
 		except OSError:
 			pass
 		self.evict()

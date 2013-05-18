@@ -256,13 +256,13 @@ def distclean_dir(dirname):
 			if _can_distclean(f):
 				fname = root + os.sep + f
 				try:
-					os.unlink(fname)
+					os.remove(fname)
 				except OSError:
 					Logs.warn('Could not remove %r' % fname)
 
 	for x in [Context.DBFILE, 'config.log']:
 		try:
-			os.unlink(x)
+			os.remove(x)
 		except OSError:
 			pass
 

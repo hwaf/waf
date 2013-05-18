@@ -110,7 +110,7 @@ def unpack_wafdir(dir):
 		import fixpy2
 		fixpy2.fixdir(dir)
 
-	os.unlink(tmp)
+	os.remove(tmp)
 	os.chdir(cwd)
 
 	try: dir = unicode(dir, 'mbcs')
