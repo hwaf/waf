@@ -139,6 +139,34 @@ class qxx(Task.classes['cxx']):
 			self.add_moc_tasks()
 			return Task.Task.runnable_status(self)
 
+	def create_moc_task(self, h_node, m_node):
+		"""
+		If several libraries use the same classes, it is possible that moc will run several times (Issue 1318)
+		It is not possible to change the file names, but we can assume that the moc transformation will be identical,
+		and the moc tasks can be shared in a global cache.
+
+		The defines passed to moc will then depend on task generator order. If this is not acceptable, then
+		use the tool slow_qt4 instead (and enjoy the slow builds... :-( )
+		"""
+		try:
+			moc_cache = self.generator.bld.moc_cache
+		except AttributeError:
+			moc_cache = self.generator.bld.moc_cache = {}
+
+		try:
+			return moc_cache[h_node]
+		except KeyError:
+			tsk = moc_cache[h_node] = Task.classes['moc'](env=self.env, generator=self.generator)
+			tsk.set_inputs(h_node)
+			tsk.set_outputs(m_node)
+
+			# direct injection in the build phase (safe because called from the main thread)
+			gen = self.generator.bld.producer
+			gen.outstanding.insert(0, tsk)
+			gen.total += 1
+
+			return tsk
+
 	def add_moc_tasks(self):
 		"""
 		Create the moc tasks by looking in ``bld.raw_deps[self.uid()]``
@@ -206,15 +234,7 @@ class qxx(Task.classes['cxx']):
 			bld.node_deps[(self.inputs[0].parent.abspath(), m_node.name)] = h_node
 
 			# create the task
-			task = Task.classes['moc'](env=self.env, generator=self.generator)
-			task.set_inputs(h_node)
-			task.set_outputs(m_node)
-
-			# direct injection in the build phase (safe because called from the main thread)
-			gen = bld.producer
-			gen.outstanding.insert(0, task)
-			gen.total += 1
-
+			task = self.create_moc_task(h_node, m_node)
 			moctasks.append(task)
 
 		# remove raw deps except the moc files to save space (optimization)
@@ -225,18 +245,12 @@ class qxx(Task.classes['cxx']):
 		for d in lst:
 			name = d.name
 			if name.endswith('.moc'):
-				task = Task.classes['moc'](env=self.env, generator=self.generator)
-				task.set_inputs(bld.node_deps[(self.inputs[0].parent.abspath(), name)]) # 1st element in a tuple
-				task.set_outputs(d)
-
-				gen = bld.producer
-				gen.outstanding.insert(0, task)
-				gen.total += 1
-
+				task = self.create_moc_task(bld.node_deps[(self.inputs[0].parent.abspath(), name)], d)
 				moctasks.append(task)
 
 		# simple scheduler dependency: run the moc task before others
 		self.run_after.update(set(moctasks))
+		print self.outputs, self.run_after
 		self.moc_done = 1
 
 	run = Task.classes['cxx'].__dict__['run']
