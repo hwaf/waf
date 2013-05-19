@@ -146,9 +146,9 @@ def boost_get_includes(self, *k, **kw):
 	includes = k and k[0] or kw.get('includes', None)
 	if includes and self.__boost_get_version_file(includes):
 		return includes
-	for dir in BOOST_INCLUDES:
-		if self.__boost_get_version_file(dir):
-			return dir
+	for d in Utils.to_list(self.environ.get('INCLUDE', '')) + BOOST_INCLUDES:
+		if self.__boost_get_version_file(d):
+			return d
 	if includes:
 		self.end_msg('headers not found in %s' % includes)
 		self.fatal('The configuration failed')
@@ -181,13 +181,13 @@ def __boost_get_libs_path(self, *k, **kw):
 		path = self.root.find_dir(libs)
 		files = path.ant_glob('*boost_*')
 	if not libs or not files:
-		for dir in BOOST_LIBS:
+		for d in Utils.to_list(self.environ.get('LIB', [])) + BOOST_LIBS:
 			try:
-				path = self.root.find_dir(dir)
+				path = self.root.find_dir(d)
 				files = path.ant_glob('*boost_*')
 				if files:
 					break
-				path = self.root.find_dir(dir + '64')
+				path = self.root.find_dir(d + '64')
 				files = path.ant_glob('*boost_*')
 				if files:
 					break
