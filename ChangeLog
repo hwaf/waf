@@ -11,6 +11,7 @@ NEW IN WAF 1.7.11
 * Share moc tasks in the Qt processing #1318
 * Fixed a source of unnecessary rebuilds in the Qt processing
 * Use LIB/INCLUDE environment variables in boost library detection on windows #1310
+* Reduce the amount of paths in the unit test execution #1319
 
 NEW IN WAF 1.7.10
 -----------------

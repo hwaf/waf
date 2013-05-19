@@ -75,18 +75,22 @@ class utest(Task.Task):
 		filename = self.inputs[0].abspath()
 		self.ut_exec = getattr(self.generator, 'ut_exec', [filename])
 		if getattr(self.generator, 'ut_fun', None):
+			# FIXME waf 1.8 - add a return statement here?
 			self.generator.ut_fun(self)
 
 		try:
 			fu = getattr(self.generator.bld, 'all_test_paths')
 		except AttributeError:
+			# this operation may be performed by at most #maxjobs
 			fu = os.environ.copy()
 
 			lst = []
 			for g in self.generator.bld.groups:
 				for tg in g:
 					if getattr(tg, 'link_task', None):
-						lst.append(tg.link_task.outputs[0].parent.abspath())
+						s = tg.link_task.outputs[0].parent.abspath()
+						if s not in lst:
+							lst.append(s)
 
 			def add_path(dct, path, var):
 				dct[var] = os.pathsep.join(Utils.to_list(path) + [os.environ.get(var, '')])
