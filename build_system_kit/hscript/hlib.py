@@ -1,16 +1,30 @@
 #! /usr/bin/env python
 
 import os, sys, imp
+import os.path as osp
+
 import yaml
 
 from waflib import Context, Errors, Options, Configure, Utils, Logs
 import waflib.Logs as msg
 
-HSCRIPT_FILE = 'hbuild.yml'
+HSCRIPT_FILE = 'hscript.yml'
 WSCRIPT_FILE = Context.WSCRIPT_FILE
 _SCRIPT_FILES = (WSCRIPT_FILE, HSCRIPT_FILE, )
 # override waf default: 'wscript' -> HSCRIPT
 #Context.WSCRIPT_FILE = HSCRIPT_FILE
+
+def _hwaf_load_fct(ctx, pkgname, fname):
+    import imp
+    name = ctx.path.find_node(fname).abspath()
+    f = open(name, 'r')
+    mod_name = '.'.join(['__hwaf__']+pkgname.split('/')+f.name[:-3].split('/'))
+    mod = imp.load_source(mod_name, f.name, f)
+    f.close()
+    fun = getattr(mod, ctx.fun, None)
+    if fun:
+        fun(ctx)
+    pass
 
 def _get_script(path):
     for script_file in _SCRIPT_FILES:
@@ -82,32 +96,17 @@ Context.load_module = load_module
 orig_recurse = Context.Context.recurse
 def recurse(self, dirs, name=None, mandatory=True, once=True):
     orig_script_file = HSCRIPT_FILE
-    is_opt = self.fun in ('options',)
     for d in Utils.to_list(dirs):
-        try:
+        if osp.exists(osp.join(d, WSCRIPT_FILE)):
             Context.WSCRIPT_FILE = WSCRIPT_FILE
             orig_recurse(self, [d], name, mandatory, once)
-        except:
-            pass
-        else:
-            if not is_opt:
-                # 'options' is optional.
-                # so we need to also look into HSCRIPT_FILE in case
-                # the WSCRIPT_FILE didn't have any
-                continue
-        try:
+        elif osp.exists(osp.join(d, HSCRIPT_FILE)):
             Context.WSCRIPT_FILE = HSCRIPT_FILE
             orig_recurse(self, [d], name, mandatory, once)
-        except:
-            if not is_opt:
-                # 'options' is optional.
-                # so we need to also look into HSCRIPT_FILE in case
-                # the WSCRIPT_FILE didn't have any
-                raise
         else:
-            continue
-        finally:
-            Context.WSCRIPT_FILE = WSCRIPT_FILE
+            raise Errors.WafError('No %s nor %s in directory %s' %
+                                  (WSCRIPT_FILE, HSCRIPT_FILE, d))
+        Context.WSCRIPT_FILE = WSCRIPT_FILE
         pass
     return
 Context.Context.recurse = recurse
@@ -141,17 +140,9 @@ def gen_py_code(dct, fname, encoding='ISO8859-1'):
 
         # waf imports -------------------
         import waflib.Logs as msg
-
+        from waflib.extras import hlib
+        
         # functions ---------------------
-        def _hwaf_load_fct(ctx, pkgname, fname):
-            import imp
-            name = ctx.path.find_node(fname).abspath()
-            f = open(name, 'r')
-            mod_name = '.'.join(['__hwaf__']+pkgname.split('/')+f.name[:-3].split('/'))
-            mod = imp.load_source(mod_name, f.name, f)
-            f.close()
-            return getattr(mod, ctx.fun)(ctx)\n\n
-        # -------------------------------
         '''
         )
     ## process project section
@@ -180,19 +171,18 @@ def gen_py_code(dct, fname, encoding='ISO8859-1'):
             pass
         pass
     _write('\treturn # pkg_deps\n\n')
-
+    
     ## process options section
-    if dct.get('options', None):
-        _w(
-            '''\
-            def options(ctx):
-            '''
-            )
+    _w('''\
+       def options(ctx):
+       '''
+       )
+    if 'options' in dct:
         # escape-hatch
         if 'hwaf-call' in dct['options']:
             calls = dct['options']['hwaf-call']
             for script in calls:
-                _write('\t_hwaf_load_fct(ctx, %r, %r)\n' % (pkgname,script,))
+                _write('\thlib._hwaf_load_fct(ctx, %r, %r)\n' % (pkgname,script,))
                 pass
             pass
         tools = dct['options'].get('tools', [])
@@ -201,22 +191,21 @@ def gen_py_code(dct, fname, encoding='ISO8859-1'):
             pass
         ## TODO: also allows to add option-flags ?
         ## ctx.options.add_opt(...)
-        _write('\treturn # options\n\n')
         pass
+    _write('\treturn # options\n\n')
 
     ## process configure section
-    if dct.get('configure', None):
-        _w(
-            '''\
-            def configure(ctx):
-            \tmsg.debug("[configure] package name: %(name)s")
-            ''' % dct['package']
-            )
+    _w('''\
+       def configure(ctx):
+       \tmsg.debug("[configure] package name: %(name)s")
+       ''' % dct['package']
+       )
+    if 'configure' in dct:
         # escape-hatch
         if 'hwaf-call' in dct['configure']:
             calls = dct['configure']['hwaf-call']
             for script in calls:
-                _write('\t_hwaf_load_fct(ctx, %r, %r)\n' % (pkgname,script,))
+                _write('\thlib._hwaf_load_fct(ctx, %r, %r)\n' % (pkgname,script,))
                 pass
             pass
 
@@ -227,22 +216,21 @@ def gen_py_code(dct, fname, encoding='ISO8859-1'):
             pass
         # TODO: env
         # TODO: export_tools
-        _write('\treturn # configure\n\n')
         pass
+    _write('\treturn # configure\n\n')
 
     ## process build section
-    if dct.get('build', None):
-        _w(
-            '''\
-            def build(ctx):
-            \tmsg.debug('[build] package name: %(name)s')
-            ''' % dct['package'],
-            )
+    _w('''\
+       def build(ctx):
+       \tmsg.debug('[build] package name: %(name)s')
+       ''' % dct['package'],
+       )
+    if 'build' in dct:
         # escape-hatch
         if 'hwaf-call' in dct['build']:
             calls = dct['build']['hwaf-call']
             for script in calls:
-                _write('\t_hwaf_load_fct(ctx, %r, %r)\n' % (pkgname,script,))
+                _write('\thlib._hwaf_load_fct(ctx, %r, %r)\n' % (pkgname,script,))
                 pass
             pass
 
@@ -259,9 +247,8 @@ def gen_py_code(dct, fname, encoding='ISO8859-1'):
             _write('\t)# target: %s\n' % tgt_name)
             pass
         # TODO: install-scripts
-
-        _write('\treturn # build\n\n')
         pass
+    _write('\treturn # build\n\n')
 
     _w('## EOF ##\n')
     
