@@ -155,10 +155,7 @@ class BuildContext(Context.Context):
 	
 	def rule(self, *k, **kw):
 		"""
-		Wrapper for creating a task generator using the decorator notation.
-
-
-		The the following code:
+		Wrapper for creating a task generator using the decorator notation. The following code::
 
 			@bld.rule(
 				target = "foo"
@@ -166,7 +163,7 @@ class BuildContext(Context.Context):
 			def _(tsk):
 				print("bar")
 
-		is equivalent to:
+		is equivalent to::
 
 			def bar(tsk):
 				print("bar")

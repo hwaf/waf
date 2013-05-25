@@ -55,7 +55,7 @@ You also need to edit your sources accordingly:
         self.includes = list(incs)
 
 Note: another tool provides Qt processing that does not require
-.moc includes, see ``playground/slow_qt/``self.
+.moc includes, see 'playground/slow_qt/'.
 
 A few options (--qt{dir,bin,...}) and environment variables
 (QT4_{ROOT,DIR,MOC,UIC,XCOMPILE}) allow finer tuning of the tool,
