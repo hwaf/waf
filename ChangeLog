@@ -1,15 +1,15 @@
 NEW IN WAF 1.7.11
 -----------------
 * Node.delete remove empty folders #1278
-* Detection of convert in parallel_debug #1300
+* Detection of 'convert' in parallel_debug #1300
 * Bibtopic support #1299
-* Safer encoding for ConfigSet files #1297
-* Qt defines on windows #1272
+* Safer encoding in ConfigSet dump files #1297
+* Missing Qt defines on Windows #1272
 * QtDesigner library detection #1315
-* Redundant check_dir call causing random uninstall failures #1313
-* Append to moc flags instead of replacing them #1317
+* Redundant 'check_dir' call causing random uninstall failures #1313
+* Append to moc flags instead of replacing #1317
 * Share moc tasks in the Qt processing #1318
-* Fixed a source of unnecessary rebuilds in the Qt processing
+* Disable a source of unnecessary rebuilds in the Qt processing
 * Use LIB/INCLUDE environment variables in boost library detection on windows #1310
 * Reduce the amount of paths in the unit test execution #1319
 
