@@ -551,20 +551,35 @@ def build(ctx):
     )
 ---------------
 
-===== File hashes
+===== File hashes and dependencies
 
-To detect if the outputs have really been produced by a task, the task signature is used as the signature of the task nodes outputs. As a consequence, files created in the source directory are going to be rebuilt each time. To avoid this, the node signature should match the actual file contents. This is enforced by using the function 'waflib.Task.update_outputs' on task classes. It replaces the methods _post_run_ and _runnable_status_ of a task class to set the hash file contents to the output nodes.
+Nodes created by tasks during the build inherit the signature of the task that created them.
+Tasks consuming such nodes as inputs will be executed whenever the first tasks are executed.
+This is desirable behaviour, as the tasks will propagate the dependencies in a transitive manner.
 
-For convenience, rule-based task generators can declare the *update_outputs* attribute to achieve the same results:
+In a few contexts, this can lead to too many downstream rebuilds, and it may be necessary to use the file hashes even if hashing the outputs can increase the build times.
+This may also be a problem when files are written in the source directory, as such files will be updated with the file hashes when the build starts.
+The function 'waflib.Task.update_outputs' may be used to modify task classes to enforce file hashes on generated files.
+It is used in a similar manner as 'waflib.Task.always_run'.
+
+For convenience, rule-based task generators can declare a *update_outputs* attribute to achieve the same results.
 
 [source,python]
 ---------------
 def build(ctx):
     ctx(
-        rule           = 'cp ${SRC} ${TGT}',
+        rule           = 'touch ${TGT}',
         source         = 'wscript',
         target         = ctx.path.make_node('wscript2'),
         update_outputs = True
     )
+    ctx(
+        rule           = 'cp ${SRC} ${TGT}',
+        source         = ctx.path.make_node('wscript2'),
+        target         = 'wscript3'
+    )
 ---------------
+
+In this example, the file *wscript2* is created in the source directory, so the *update_outputs* keyword prevents unnecessary rebuilds.
+This keyword also ensures that *wscript3* is rebuilt only when the contents of *wscript2* change.
 
