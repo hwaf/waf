@@ -562,7 +562,7 @@ For convenience, rule-based task generators can declare the *update_outputs* att
 def build(ctx):
     ctx(
         rule           = 'cp ${SRC} ${TGT}',
-        source         = 'wcript',
+        source         = 'wscript',
         target         = ctx.path.make_node('wscript2'),
         update_outputs = True
     )
