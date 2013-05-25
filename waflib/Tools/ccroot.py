@@ -568,7 +568,7 @@ class fake_stlib(stlink_task):
 		return Task.SKIP_ME
 
 @conf
-def read_shlib(self, name, paths=[]):
+def read_shlib(self, name, paths=[], export_includes=[], export_defines=[]):
 	"""
 	Read a system shared library, enabling its use as a local library. Will trigger a rebuild if the file changes::
 
@@ -576,14 +576,14 @@ def read_shlib(self, name, paths=[]):
 			bld.read_shlib('m')
 			bld.program(source='main.c', use='m')
 	"""
-	return self(name=name, features='fake_lib', lib_paths=paths, lib_type='shlib')
+	return self(name=name, features='fake_lib', lib_paths=paths, lib_type='shlib', export_includes=export_includes, export_defines=export_defines)
 
 @conf
-def read_stlib(self, name, paths=[]):
+def read_stlib(self, name, paths=[], export_includes=[], export_defines=[]):
 	"""
 	Read a system static library, enabling a use as a local library. Will trigger a rebuild if the file changes.
 	"""
-	return self(name=name, features='fake_lib', lib_paths=paths, lib_type='stlib')
+	return self(name=name, features='fake_lib', lib_paths=paths, lib_type='stlib', export_includes=export_includes, export_defines=export_defines)
 
 lib_patterns = {
 	'shlib' : ['lib%s.so', '%s.so', 'lib%s.dylib', 'lib%s.dll', '%s.dll'],
