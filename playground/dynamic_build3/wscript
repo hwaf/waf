@@ -26,14 +26,17 @@ def configure(conf):
 def build(bld):
 	bld.post_mode = Build.POST_LAZY
 
+	# build directory for the external library
+	tmp_dir = bld.bldnode.make_node('external_lib')
+
 	# build the external library
-	bld(rule=some_fun, target='external_lib/flag.file')
+	bld(rule=some_fun, target=tmp_dir.make_node('flag.lock'))
 
 	# once it is done create a second build group
 	bld.add_group()
 
 	# read the library
-	bld.read_shlib('foo', paths=['build/external_lib'], export_includes='build/external_lib', export_defines=['A=1'])
+	bld.read_shlib('foo', paths=[tmp_dir], export_includes=[tmp_dir], export_defines=['A=1'])
 
 	# and use this library, for a target
 	# no additional build group needed since "app" will wait on "foo" through the use= system
@@ -85,6 +88,6 @@ def some_fun(task):
 
 	Logs.info('  (the external library has been compiled)')
 
-	# then write a lock file, so that a rebuild occurs if everything is removed manually
+	# write a lock file so that a rebuild occurs if files are removed manually
 	task.outputs[0].write('ok')
 
