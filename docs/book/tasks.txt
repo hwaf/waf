@@ -555,14 +555,13 @@ def build(ctx):
 
 Nodes created by tasks during the build inherit the signature of the task that created them.
 Tasks consuming such nodes as inputs will be executed whenever the first tasks are executed.
-This is desirable behaviour, as the tasks will propagate the dependencies in a transitive manner.
+This is usually a desirable behaviour, as the tasks will propagate the dependencies in a transitive manner.
 
-In a few contexts, this can lead to too many downstream rebuilds, and it may be necessary to use the file hashes even if hashing the outputs can increase the build times.
-This may also be a problem when files are written in the source directory, as such files will be updated with the file hashes when the build starts.
-The function 'waflib.Task.update_outputs' may be used to modify task classes to enforce file hashes on generated files.
-It is used in a similar manner as 'waflib.Task.always_run'.
+In a few contexts though, there can be an excess of downstream rebuilds even if the output files content have not changed.
+This will also cause build files in the source directory to be rebuild whenever a new build is initiated (files in the source directory are hashed).
+The function 'waflib.Task.update_outputs' is used to enable file hashes in task classes, it is used in the same way as 'waflib.Task.always_run'.
 
-For convenience, rule-based task generators can declare a *update_outputs* attribute to achieve the same results.
+For convenience, rule-based task generators can provide the *update_outputs* attribute to simplify the declaration:
 
 [source,python]
 ---------------
@@ -580,6 +579,7 @@ def build(ctx):
     )
 ---------------
 
-In this example, the file *wscript2* is created in the source directory, so the *update_outputs* keyword prevents unnecessary rebuilds.
-This keyword also ensures that *wscript3* is rebuilt only when the contents of *wscript2* change.
+In this example, the file *wscript2* is created in the source directory.
+The *update_outputs* keyword is therefore necessary to prevent unnecessary rebuilds.
+Additionally, *wscript3* is only rebuilt when the contents of *wscript2* change.
 
