@@ -16,7 +16,7 @@ A simple tool to integrate protocol buffers into your build system.
         bld(
                 features = 'cxx cxxprogram'
                 source   = 'main.cpp file1.proto proto/file2.proto', 
-                include  = '. proto',
+                includes = '. proto',
                 target   = 'executable') 
 
 """
