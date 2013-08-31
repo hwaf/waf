@@ -1,6 +1,9 @@
 NEW IN WAF 1.7.12
 -----------------
 * Fix for systems without threading #1323
+* Fix for library installation on OpenBSD
+* Propagate the max_depth argument in ant_glob #1328
+* wsdk detection fix #1335
 
 NEW IN WAF 1.7.11
 -----------------
