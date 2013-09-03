@@ -8,8 +8,6 @@
 g++/llvm detection.
 """
 
-import os, sys
-from waflib import Configure, Options, Utils
 from waflib.Tools import ccroot, ar
 from waflib.Configure import conf
 
@@ -127,6 +125,10 @@ def gxx_modifier_hpux(conf):
 	v['STLIB_MARKER']        = '-Bstatic'
 	v['CFLAGS_cxxshlib']     = ['-fPIC','-DPIC']
 	v['cxxshlib_PATTERN']    = 'lib%s.sl'
+
+@conf
+def gcc_modifier_openbsd(conf):
+	conf.env.SONAME_ST = []
 
 @conf
 def gxx_modifier_platform(conf):

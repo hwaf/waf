@@ -493,6 +493,9 @@ def apply_vnum(self):
 		name3 = libname + '.' + self.vnum
 		name2 = libname + '.' + nums[0]
 
+		if self.env.DEST_OS == 'openbsd':
+			name3 = '%s.%s' % (name2, nums[1])
+
 	# add the so name for the ld linker - to disable, just unset env.SONAME_ST
 	if self.env.SONAME_ST:
 		v = self.env.SONAME_ST % name2
@@ -506,7 +509,7 @@ def apply_vnum(self):
 		bld = self.bld
 		path = self.install_task.dest
 		if self.env.DEST_OS == 'openbsd':
-			t1 = bld.install_as('%s%s%s.%s' % (path, os.sep, name2, nums[1]), node, env=self.env, chmod=self.link_task.chmod)
+			t1 = bld.install_as('%s%s%s' % (path, os.sep, name3), node, env=self.env, chmod=self.link_task.chmod)
 			self.vnum_install_task = (t1,)
 		else:
 			t1 = bld.install_as(path + os.sep + name3, node, env=self.env, chmod=self.link_task.chmod)
