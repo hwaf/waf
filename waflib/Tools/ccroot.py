@@ -493,16 +493,18 @@ def apply_vnum(self):
 		name3 = libname + '.' + self.vnum
 		name2 = libname + '.' + nums[0]
 
-		if self.env.DEST_OS == 'openbsd':
-			name3 = '%s.%s' % (name2, nums[1])
-
 	# add the so name for the ld linker - to disable, just unset env.SONAME_ST
 	if self.env.SONAME_ST:
 		v = self.env.SONAME_ST % name2
 		self.env.append_value('LINKFLAGS', v.split())
 
 	# the following task is just to enable execution from the build dir :-/
-	self.create_task('vnum', node, [node.parent.find_or_declare(name2), node.parent.find_or_declare(name3)])
+
+	if self.env.DEST_OS == 'openbsd':
+		name3 = '%s.%s' % (name2, nums[1])
+		self.create_task('vnum', node, node.parent.find_or_declare(name3))
+	else:
+		self.create_task('vnum', node, [node.parent.find_or_declare(name2), node.parent.find_or_declare(name3)])
 
 	if getattr(self, 'install_task', None):
 		self.install_task.hasrun = Task.SKIP_ME
