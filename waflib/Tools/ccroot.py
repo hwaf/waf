@@ -146,11 +146,14 @@ class link_task(Task.Task):
 				pattern = '%s'
 			folder, name = os.path.split(target)
 
-			if self.__class__.__name__.find('shlib') > 0:
-				if self.env.DEST_BINFMT == 'pe' and getattr(self.generator, 'vnum', None):
+			if self.__class__.__name__.find('shlib') > 0 and getattr(self.generator, 'vnum', None):
+				nums = self.generator.vnum.split('.')
+				if self.env.DEST_BINFMT == 'pe':
 					# include the version in the dll file name,
 					# the import lib file name stays unversionned.
-					name = name + '-' + self.generator.vnum.split('.')[0]
+					name = name + '-' + nums[0]
+				elif self.env.DEST_OS == 'openbsd':
+					pattern = '%s.%s.%s' % (pattern, nums[0], nums[1])
 
 			tmp = folder + os.sep + pattern % name
 			target = self.generator.path.find_or_declare(tmp)
@@ -500,10 +503,7 @@ def apply_vnum(self):
 
 	# the following task is just to enable execution from the build dir :-/
 
-	if self.env.DEST_OS == 'openbsd':
-		name3 = '%s.%s' % (name2, nums[1])
-		self.create_task('vnum', node, node.parent.find_or_declare(name3))
-	else:
+	if self.env.DEST_OS != 'openbsd':
 		self.create_task('vnum', node, [node.parent.find_or_declare(name2), node.parent.find_or_declare(name3)])
 
 	if getattr(self, 'install_task', None):
