@@ -511,7 +511,7 @@ def apply_vnum(self):
 		bld = self.bld
 		path = self.install_task.dest
 		if self.env.DEST_OS == 'openbsd':
-			libname = self.outputs[0].name
+			libname = self.link_task.outputs[0].name
 			t1 = bld.install_as('%s%s%s' % (path, os.sep, libname), node, env=self.env, chmod=self.link_task.chmod)
 			self.vnum_install_task = (t1,)
 		else:
