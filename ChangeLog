@@ -1,3 +1,8 @@
+NEW IN WAF 1.7.13
+-----------------
+* Fix for library installation on OpenBSD #1355
+* Intel compiler detection fix when using Python3 #1356
+
 NEW IN WAF 1.7.12
 -----------------
 * Fix for systems without threading #1323
