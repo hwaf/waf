@@ -127,7 +127,7 @@ def gxx_modifier_hpux(conf):
 	v['cxxshlib_PATTERN']    = 'lib%s.sl'
 
 @conf
-def gcc_modifier_openbsd(conf):
+def gxx_modifier_openbsd(conf):
 	conf.env.SONAME_ST = []
 
 @conf
