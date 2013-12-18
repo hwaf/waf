@@ -1,3 +1,15 @@
+NEW IN WAF 1.7.14
+-----------------
+* Fixes for Python 3.3 and 3.4
+* Extra tool for memory reduction some large builds
+* Fix for nasm trailing slashes #1379
+* Fix for eclipse project generators #1377
+* Qt5 tool
+* Handle empty defines when pasting tokens
+* Fix for syms.py on python3 #1361
+* Swig fixes
+* Doxygen recursive dependencies
+
 NEW IN WAF 1.7.13
 -----------------
 * Fix for library installation on OpenBSD #1355
