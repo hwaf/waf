@@ -3,7 +3,7 @@ try:
 	if not (sys.stderr.isatty() and sys.stdout.isatty()):
 		raise ValueError('not a tty')
 
-	from ctypes import *
+	from ctypes import Structure, windll, c_short, c_ushort, c_ulong, c_int, byref, c_wchar, POINTER, c_long, c_char
 
 	class COORD(Structure):
 		_fields_ = [("X", c_short), ("Y", c_short)]
@@ -23,6 +23,14 @@ try:
 	windll.kernel32.GetConsoleScreenBufferInfo.restype = c_long
 	windll.kernel32.SetConsoleTextAttribute.argtypes = [c_ulong, c_ushort]
 	windll.kernel32.SetConsoleTextAttribute.restype = c_long
+	windll.kernel32.FillConsoleOutputCharacterA.argtypes = [c_ulong, c_char, c_ulong, POINTER(COORD), POINTER(c_ulong)]
+	windll.kernel32.FillConsoleOutputCharacterA.restype = c_long
+	windll.kernel32.FillConsoleOutputAttribute.argtypes = [c_ulong, c_ushort, c_ulong, POINTER(COORD), POINTER(c_ulong) ]
+	windll.kernel32.FillConsoleOutputAttribute.restype = c_long
+	windll.kernel32.SetConsoleCursorPosition.argtypes = [c_ulong, POINTER(COORD) ]
+	windll.kernel32.SetConsoleCursorPosition.restype = c_long
+	windll.kernel32.SetConsoleCursorInfo.argtypes = [c_ulong, POINTER(CONSOLE_CURSOR_INFO)]
+	windll.kernel32.SetConsoleCursorInfo.restype = c_long
 
 	sbinfo = CONSOLE_SCREEN_BUFFER_INFO()
 	csinfo = CONSOLE_CURSOR_INFO()
