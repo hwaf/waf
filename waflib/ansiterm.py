@@ -17,6 +17,13 @@ try:
 	class CONSOLE_CURSOR_INFO(Structure):
 		_fields_ = [('dwSize',c_ulong), ('bVisible', c_int)]
 
+	windll.kernel32.GetStdHandle.argtypes = [c_ulong]
+	windll.kernel32.GetStdHandle.restype = c_ulong
+	windll.kernel32.GetConsoleScreenBufferInfo.argtypes = [c_ulong, POINTER(CONSOLE_SCREEN_BUFFER_INFO)]
+	windll.kernel32.GetConsoleScreenBufferInfo.restype = c_long
+	windll.kernel32.SetConsoleTextAttribute.argtypes = [c_ulong, c_ushort]
+	windll.kernel32.SetConsoleTextAttribute.restype = c_long
+
 	sbinfo = CONSOLE_SCREEN_BUFFER_INFO()
 	csinfo = CONSOLE_CURSOR_INFO()
 	hconsole = windll.kernel32.GetStdHandle(-11)
