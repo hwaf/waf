@@ -183,9 +183,9 @@ else:
 					c = int(c)
 				else:
 					c = to_int(c, 0)
-				if c in range(30,38): # fgcolor
+				if 29 < c < 38: # fgcolor
 					attr = (attr & 0xfff0) | self.rgb2bgr(c-30)
-				elif c in range(40,48): # bgcolor
+				elif 39 < c < 48: # bgcolor
 					attr = (attr & 0xff0f) | (self.rgb2bgr(c-40) << 4)
 				elif c == 0: # reset
 					attr = self.orig_sbinfo.Attributes
