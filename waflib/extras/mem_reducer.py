@@ -11,7 +11,7 @@ def options(opt):
 """
 
 import itertools
-from waflib import Utils, Task, Runner
+from waflib import Utils, Task, Runner, Logs
 
 class SetOfTasks(object):
 	"""Wraps a set and a task which has a list of other sets.
@@ -85,7 +85,10 @@ def get_out(self):
 		pass
 	else:
 		for k in ws:
-			k.remove(tsk)
+			try:
+				k.remove(tsk)
+			except KeyError:
+				pass
 
 	return tsk
 Runner.Parallel.get_out = get_out
@@ -151,7 +154,10 @@ if 1:
 					pass
 				else:
 					for k in ws:
-						k.remove(tsk)
+						try:
+							k.remove(tsk)
+						except KeyError:
+							pass
 
 			else:
 				# run me: put the task in ready queue
