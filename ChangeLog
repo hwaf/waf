@@ -1,3 +1,13 @@
+NEW IN WAF 1.7.15
+-----------------
+* Fix for tex.py in python3
+* Optimizations in mem_reducer.py
+* Fixes for the windows console in ansiterm.py
+* Fixes for C++ compilers in gccdeps.py
+* Xcode generator include fixes #1388
+* Fortran scanner improvements #1389
+* Configuration tests with several libraries at once in a string #1390
+
 NEW IN WAF 1.7.14
 -----------------
 * Fixes for Python 3.3 and 3.4
